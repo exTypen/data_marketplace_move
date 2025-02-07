@@ -1,0 +1,13 @@
+[package]
+name = "marketplace_v2"
+version = "1.0.1"
+authors = []
+
+[addresses]
+campaign_manager_v2 = "0x930c5470695a57dd09714771ad4b723028561f9a87f5e829142dd7aea6501961"
+
+
+[dependencies.AptosFramework]
+git = "https://github.com/aptos-labs/aptos-framework.git"
+rev = "devnet"
+subdir = "aptos-framework"
