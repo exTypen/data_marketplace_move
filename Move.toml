@@ -1,10 +1,11 @@
 [package]
-name = "marketplace_v2"
-version = "1.0.1"
+name = "marketplace"
+version = "1.0.0"
 authors = []
 
 [addresses]
-campaign_manager_v2 = "0x930c5470695a57dd09714771ad4b723028561f9a87f5e829142dd7aea6501961"
+campaign_manager = "0xc1b4e3ba40bb75b294bb12ade0439be98611c0ed79ed899f91191e726ebab79e"
+escrow_manager = "0xc1b4e3ba40bb75b294bb12ade0439be98611c0ed79ed899f91191e726ebab79e"
 
 
 [dependencies.AptosFramework]

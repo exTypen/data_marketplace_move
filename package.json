@@ -2,9 +2,9 @@
   "name": "campaign-manager-client",
   "version": "1.0.0",
   "description": "Campaign Manager Move modülü için TypeScript istemcisi",
-  "main": "scripts/campaign_manager_client.ts",
+  "main": "scripts/app.ts",
   "scripts": {
-    "start": "ts-node scripts/campaign_manager_client.ts"
+    "start": "ts-node scripts/app.ts"
   },
   "dependencies": {
     "aptos": "^1.21.0",
