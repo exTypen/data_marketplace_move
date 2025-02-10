@@ -8,8 +8,11 @@ module campaign_manager::CampaignManager {
     struct Campaign has store, drop, copy {
         id: u64,
         creator: address,
+        title: vector<u8>,
+        description: vector<u8>,
         data_spec: vector<u8>,
         reward_pool: u64,
+        remaining_reward: u64,
         unit_price: u64,
         active: bool,
     }
@@ -34,6 +37,8 @@ module campaign_manager::CampaignManager {
     // Creates a new campaign and adds it to the store.
     public entry fun create_campaign(
         account: &signer,
+        title: vector<u8>,
+        description: vector<u8>,
         data_spec: vector<u8>,
         unit_price: u64,
         reward_pool: u64
@@ -50,9 +55,12 @@ module campaign_manager::CampaignManager {
         let new_campaign = Campaign {
             id,
             creator: signer::address_of(account),
+            title,
+            description,
             data_spec,
             unit_price,
             reward_pool,
+            remaining_reward: reward_pool,
             active: true,
         };
         table::add(&mut store_ref.campaigns, id, new_campaign);
@@ -62,7 +70,11 @@ module campaign_manager::CampaignManager {
     #[view]
     public fun get_campaign(campaign_id: u64): Campaign acquires CampaignStore {
         let store_ref = borrow_global<CampaignStore>(@campaign_manager);
-        *table::borrow(&store_ref.campaigns, campaign_id)
+        let campaign = *table::borrow(&store_ref.campaigns, campaign_id);
+        
+        // Get the remaining amount in the escrow
+        campaign.remaining_reward = EscrowManager::get_locked_amount(campaign_id, @campaign_manager);
+        campaign
     }
 
     // Returns all campaigns in the store.
@@ -74,6 +86,8 @@ module campaign_manager::CampaignManager {
         while (i < store.next_id) {
             if (table::contains(&store.campaigns, i)) {
                 let camp = *table::borrow(&store.campaigns, i);
+                // For each campaign, get the remaining amount in the escrow
+                camp.remaining_reward = EscrowManager::get_locked_amount(i, @campaign_manager);
                 vector::push_back(&mut campaigns, camp);
             };
             i = i + 1;

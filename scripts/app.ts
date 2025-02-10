@@ -6,8 +6,11 @@ const FAUCET_URL = "https://faucet.devnet.aptoslabs.com";
 interface Campaign {
     id: number;
     creator: string;
+    title: string;
+    description: string;
     data_spec: string;
     reward_pool: number;
+    remaining_reward: number;
     unit_price: number;
     active: boolean;
 }
@@ -32,7 +35,7 @@ class CampaignManager {
         this.account = new AptosAccount(
             HexString.ensure(privateKeyHex).toUint8Array()
         );
-        this.moduleAddress = "0x1104b62ffd1ece36450a697177093195c476a92db703adf3b59cc536ff7b00ed";
+        this.moduleAddress = "0xea810f84d376c13e44a663cf271c45731076218407ae1760a4ac85b3d955a0f6";
     }
 
     getAddress(): string {
@@ -60,6 +63,8 @@ class CampaignManager {
     }
 
     async createCampaign(
+        title: string,
+        description: string,
         dataSpec: string,
         unitPrice: number,
         rewardPool: number
@@ -69,6 +74,8 @@ class CampaignManager {
                 function: `${this.moduleAddress}::CampaignManager::create_campaign`,
                 type_arguments: [],
                 arguments: [
+                    Array.from(Buffer.from(title)),
+                    Array.from(Buffer.from(description)),
                     Array.from(Buffer.from(dataSpec)),
                     unitPrice.toString(),
                     rewardPool.toString()
@@ -122,49 +129,14 @@ class CampaignManager {
         return {
             id: Number(response.id),
             creator: response.creator,
+            title: Buffer.from(response.title.slice(2), 'hex').toString(),
+            description: Buffer.from(response.description.slice(2), 'hex').toString(),
             data_spec: Buffer.from(response.data_spec.slice(2), 'hex').toString(),
             reward_pool: Number(response.reward_pool),
+            remaining_reward: Number(response.remaining_reward),
             unit_price: Number(response.unit_price),
             active: response.active
         };
-    }
-
-    async lockFunds(campaignId: number, amount: number): Promise<void> {
-        try {
-            const lockTxn = await this.client.generateTransaction(this.account.address(), {
-                function: `${this.moduleAddress}::EscrowManager::lock_funds`,
-                type_arguments: [],
-                arguments: [
-                    campaignId.toString(),
-                    amount.toString(),
-                    this.moduleAddress
-                ]
-            });
-
-            const signedLockTxn = await this.client.signTransaction(this.account, lockTxn);
-            const lockResult = await this.client.submitTransaction(signedLockTxn);
-            await this.client.waitForTransaction(lockResult.hash);
-            console.log("Funds locked successfully!");
-        } catch (e) {
-            console.log("Fund locking error:", e);
-            throw e;
-        }
-    }
-
-    async getLockedAmount(campaignId: number): Promise<number> {
-        try {
-            const payload: Types.ViewRequest = {
-                function: `${this.moduleAddress}::EscrowManager::get_locked_amount`,
-                type_arguments: [],
-                arguments: [campaignId.toString(), this.moduleAddress]
-            };
-
-            const response = await this.client.view(payload);
-            return Number(response[0]);
-        } catch (e) {
-            console.log("Error getting locked amount:", e);
-            return 0;
-        }
     }
 
     async addContribution(
@@ -243,13 +215,14 @@ async function main() {
     /*
     console.log("\nCreating new campaign...");
     await campaignManager.createCampaign(
-        "Test Campaign 1",
+        "Test Campaign 4",
+        "Test Campaign 4 Description",
+        "Test Campaign 4 Data Specification",
         1_000_000,   // 0.01 APT unit price
         50_000_000  // 0.5 APT reward pool
     );
     */
     
-
     // List all campaigns
     console.log("\nListing campaigns...");
     const campaigns = await campaignManager.listAllCampaigns();
@@ -258,21 +231,20 @@ async function main() {
         console.log("\nCampaign Details:");
         console.log("ID:", campaign.id);
         console.log("Creator:", campaign.creator);
+        console.log("Title:", campaign.title);
+        console.log("Description:", campaign.description);
         console.log("Data Specification:", campaign.data_spec);
         console.log("Reward Pool:", campaign.reward_pool / 100_000_000, "APT");
+        console.log("Remaining Reward:", campaign.remaining_reward / 100_000_000, "APT");
         console.log("Unit Price:", campaign.unit_price / 100_000_000, "APT");
         console.log("Active:", campaign.active);
-
-        console.log("Checking locked amount for campaign from escrow manager", campaign.id);
-        const lockedAmount = await campaignManager.getLockedAmount(campaign.id);
-        console.log("Locked amount for campaign", campaign.id, ":", lockedAmount / 100_000_000, "APT");
         console.log("\n----------------------------------------");
     }
 
     
     // Test contribution adding
 
-    /*
+    
     console.log("\nAdding a test contribution...");
     await campaignManager.addContribution(
         campaigns[1].id,  
@@ -280,11 +252,11 @@ async function main() {
         "Test contribution data",
         true            // verified
     );
-    */
+    
 
     // Get and display contributions
     console.log("\nListing contributions for campaign...");
-    const contributions = await campaignManager.getCampaignContributions(campaigns[0].id);
+    const contributions = await campaignManager.getCampaignContributions(campaigns[1].id);
     for (const contribution of contributions) {
         console.log("\nContribution Details:");
         console.log("Campaign ID:", contribution.campaign_id);
