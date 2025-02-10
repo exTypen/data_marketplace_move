@@ -4,7 +4,10 @@
   "description": "Campaign Manager Move modülü için TypeScript istemcisi",
   "main": "scripts/app.ts",
   "scripts": {
-    "start": "ts-node scripts/app.ts"
+    "start": "ts-node scripts/app.ts",
+    "node": "aptos node run-local-testnet --with-faucet",
+    "build": "aptos move publish --profile default",
+    "execute-project": "aptos move compile &&npm run build && npm run start"
   },
   "dependencies": {
     "aptos": "^1.21.0",
