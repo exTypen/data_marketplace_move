@@ -4,9 +4,9 @@ version = "1.0.0"
 authors = []
 
 [addresses]
-campaign_manager = "0xea810f84d376c13e44a663cf271c45731076218407ae1760a4ac85b3d955a0f6"
-escrow_manager = "0xea810f84d376c13e44a663cf271c45731076218407ae1760a4ac85b3d955a0f6"
-contribution_manager = "0xea810f84d376c13e44a663cf271c45731076218407ae1760a4ac85b3d955a0f6"
+campaign_manager = "0x3a63345a145969c662e862a7dfcec878d6cde75b17a878c63409142a7bb2f8c4"
+escrow_manager = "0x3a63345a145969c662e862a7dfcec878d6cde75b17a878c63409142a7bb2f8c4"
+contribution_manager = "0x3a63345a145969c662e862a7dfcec878d6cde75b17a878c63409142a7bb2f8c4"
 
 
 [dependencies.AptosFramework]

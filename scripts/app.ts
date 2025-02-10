@@ -39,14 +39,16 @@ class CampaignManager {
   private account: AptosAccount;
   private moduleAddress: string;
 
+
   constructor(privateKeyHex: string) {
-    this.client = new AptosClient(NODE_URL);
-    this.faucetClient = new FaucetClient(NODE_URL, FAUCET_URL);
-    this.account = new AptosAccount(
-      HexString.ensure(privateKeyHex).toUint8Array()
-    );
-    this.moduleAddress = process.env.CAMPAIGN_MANAGER_ADDRESS || "";
+      this.client = new AptosClient(NODE_URL);
+      this.faucetClient = new FaucetClient(NODE_URL, FAUCET_URL);
+      this.account = new AptosAccount(
+          HexString.ensure(privateKeyHex).toUint8Array()
+      );
+      this.moduleAddress = "0x3a63345a145969c662e862a7dfcec878d6cde75b17a878c63409142a7bb2f8c4";
   }
+
 
   getAddress(): string {
     return this.account.address().hex();
@@ -231,69 +233,64 @@ async function main() {
   console.log("Private Key:", account.toPrivateKeyObject().privateKeyHex);
   console.log("Address:", account.address().hex());
 
-  const campaignManager = new CampaignManager(
-    account.toPrivateKeyObject().privateKeyHex
-  );
 
   // Add APT to account
   console.log("\nAdding APT to account...");
   await campaignManager.fundAccount();
 
+
   // Create new campaign
-  /*
-    console.log("\nCreating new campaign...");
-    await campaignManager.createCampaign(
-        "Test Campaign 4",
-        "Test Campaign 4 Description",
-        "Test Campaign 4 Data Specification",
-        1_000_000,   // 0.01 APT unit price
-        50_000_000  // 0.5 APT reward pool
-    );
-    */
-    
-    // List all campaigns
-    console.log("\nListing campaigns...");
-    const campaigns = await campaignManager.listAllCampaigns();
-    console.log("\nTotal number of campaigns:", campaigns.length);
-    for (const campaign of campaigns) {
-        console.log("\nCampaign Details:");
-        console.log("ID:", campaign.id);
-        console.log("Creator:", campaign.creator);
-        console.log("Title:", campaign.title);
-        console.log("Description:", campaign.description);
-        console.log("Data Specification:", campaign.data_spec);
-        console.log("Reward Pool:", campaign.reward_pool / 100_000_000, "APT");
-        console.log("Remaining Reward:", campaign.remaining_reward / 100_000_000, "APT");
-        console.log("Unit Price:", campaign.unit_price / 100_000_000, "APT");
-        console.log("Active:", campaign.active);
-        console.log("\n----------------------------------------");
-    }
+  console.log("\nCreating new campaign...");
+  await campaignManager.createCampaign(
+      "Test Campaign 4",
+      "Test Campaign 4 Description",
+      "Test Campaign 4 Data Specification",
+      1_000_000,   // 0.01 APT unit price
+      50_000_000  // 0.5 APT reward pool
+  );
 
-    
-    // Test contribution adding
 
-    
-    console.log("\nAdding a test contribution...");
-    await campaignManager.addContribution(
-        campaigns[1].id,  
-        2,              // data_count
-        "Test contribution data",
-        true            // verified
-    );
-    
+  // List all campaigns
+  console.log("\nListing campaigns...");
+  const campaigns = await campaignManager.listAllCampaigns();
+  console.log("\nTotal number of campaigns:", campaigns.length);
+  for (const campaign of campaigns) {
+      console.log("\nCampaign Details:");
+      console.log("ID:", campaign.id);
+      console.log("Creator:", campaign.creator);
+      console.log("Title:", campaign.title);
+      console.log("Description:", campaign.description);
+      console.log("Data Specification:", campaign.data_spec);
+      console.log("Reward Pool:", campaign.reward_pool / 100_000_000, "APT");
+      console.log("Remaining Reward:", campaign.remaining_reward / 100_000_000, "APT");
+      console.log("Unit Price:", campaign.unit_price / 100_000_000, "APT");
+      console.log("Active:", campaign.active);
+      console.log("\n----------------------------------------");
+  }
 
-    // Get and display contributions
-    console.log("\nListing contributions for campaign...");
-    const contributions = await campaignManager.getCampaignContributions(campaigns[1].id);
-    for (const contribution of contributions) {
-        console.log("\nContribution Details:");
-        console.log("Campaign ID:", contribution.campaign_id);
-        console.log("Contributor:", contribution.contributor);
-        console.log("Data Count:", contribution.data_count);
-        console.log("Data:", contribution.data);
-        console.log("Verified:", contribution.verified);
-        console.log("\n----------------------------------------");
-    }
+
+  // Test contribution adding
+
+  console.log("\nAdding a test contribution...");
+  await campaignManager.addContribution(
+      campaigns[0].id,  
+      2,              // data_count
+      "Test contribution data",
+      true            // verified
+  );
+
+  // Get and display contributions
+  console.log("\nListing contributions for campaign...");
+  const contributions = await campaignManager.getCampaignContributions(campaigns[0].id);
+  for (const contribution of contributions) {
+      console.log("\nContribution Details:");
+      console.log("Campaign ID:", contribution.campaign_id);
+      console.log("Contributor:", contribution.contributor);
+      console.log("Data Count:", contribution.data_count);
+      console.log("Data:", contribution.data);
+      console.log("Verified:", contribution.verified);
+      console.log("\n----------------------------------------");
+  }
 }
 
 main().catch(console.error);
