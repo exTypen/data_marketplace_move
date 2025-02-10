@@ -7,9 +7,17 @@ interface Campaign {
     id: number;
     creator: string;
     data_spec: string;
-    quality_criteria: string;
     reward_pool: number;
+    unit_price: number;
     active: boolean;
+}
+
+interface Contribution {
+    campaign_id: number;
+    contributor: string;
+    data_count: number;
+    data: string;
+    verified: boolean;
 }
 
 class CampaignManager {
@@ -24,7 +32,7 @@ class CampaignManager {
         this.account = new AptosAccount(
             HexString.ensure(privateKeyHex).toUint8Array()
         );
-        this.moduleAddress = "0xc1b4e3ba40bb75b294bb12ade0439be98611c0ed79ed899f91191e726ebab79e";
+        this.moduleAddress = "0x1104b62ffd1ece36450a697177093195c476a92db703adf3b59cc536ff7b00ed";
     }
 
     getAddress(): string {
@@ -53,7 +61,7 @@ class CampaignManager {
 
     async createCampaign(
         dataSpec: string,
-        qualityCriteria: string,
+        unitPrice: number,
         rewardPool: number
     ): Promise<void> {
         try {
@@ -62,7 +70,7 @@ class CampaignManager {
                 type_arguments: [],
                 arguments: [
                     Array.from(Buffer.from(dataSpec)),
-                    Array.from(Buffer.from(qualityCriteria)),
+                    unitPrice.toString(),
                     rewardPool.toString()
                 ]
             });
@@ -115,8 +123,8 @@ class CampaignManager {
             id: Number(response.id),
             creator: response.creator,
             data_spec: Buffer.from(response.data_spec.slice(2), 'hex').toString(),
-            quality_criteria: Buffer.from(response.quality_criteria.slice(2), 'hex').toString(),
             reward_pool: Number(response.reward_pool),
+            unit_price: Number(response.unit_price),
             active: response.active
         };
     }
@@ -158,6 +166,61 @@ class CampaignManager {
             return 0;
         }
     }
+
+    async addContribution(
+        campaignId: number,
+        dataCount: number,
+        data: string,
+        verified: boolean = false
+    ): Promise<void> {
+        try {
+            const addContribTxn = await this.client.generateTransaction(this.account.address(), {
+                function: `${this.moduleAddress}::ContributionManager::add_contribution`,
+                type_arguments: [],
+                arguments: [
+                    campaignId.toString(),
+                    dataCount.toString(),
+                    Array.from(Buffer.from(data)),
+                    verified
+                ]
+            });
+
+            const signedTxn = await this.client.signTransaction(this.account, addContribTxn);
+            const result = await this.client.submitTransaction(signedTxn);
+            await this.client.waitForTransaction(result.hash);
+            console.log("Contribution added successfully!");
+        } catch (e) {
+            console.log("Contribution addition error:", e);
+            throw e;
+        }
+    }
+
+    async getCampaignContributions(campaignId: number): Promise<Contribution[]> {
+        try {
+            const payload: Types.ViewRequest = {
+                function: `${this.moduleAddress}::ContributionManager::get_campaign_contributions`,
+                type_arguments: [],
+                arguments: [campaignId.toString()]
+            };
+
+            const response = await this.client.view(payload);
+            const contributions = response[0] as any[];
+            return contributions.map(contrib => this.parseContributionResponse(contrib));
+        } catch (e) {
+            console.log("Error getting campaign contributions:", e);
+            return [];
+        }
+    }
+
+    private parseContributionResponse(response: any): Contribution {
+        return {
+            campaign_id: Number(response.campaign_id),
+            contributor: response.contributor,
+            data_count: Number(response.data_count),
+            data: Buffer.from(response.data.slice(2), 'hex').toString(),
+            verified: response.verified
+        };
+    }
 }
 
 async function main() {
@@ -173,13 +236,19 @@ async function main() {
     console.log("\nAdding APT to account...");
     await campaignManager.fundAccount();
 
+
+    
+
     // Create new campaign
+    /*
     console.log("\nCreating new campaign...");
     await campaignManager.createCampaign(
         "Test Campaign 1",
-        "Quality Criteria 1",
-        50_000_000 // 0.5 APT
+        1_000_000,   // 0.01 APT unit price
+        50_000_000  // 0.5 APT reward pool
     );
+    */
+    
 
     // List all campaigns
     console.log("\nListing campaigns...");
@@ -190,8 +259,8 @@ async function main() {
         console.log("ID:", campaign.id);
         console.log("Creator:", campaign.creator);
         console.log("Data Specification:", campaign.data_spec);
-        console.log("Quality Criteria:", campaign.quality_criteria);
         console.log("Reward Pool:", campaign.reward_pool / 100_000_000, "APT");
+        console.log("Unit Price:", campaign.unit_price / 100_000_000, "APT");
         console.log("Active:", campaign.active);
 
         console.log("Checking locked amount for campaign from escrow manager", campaign.id);
@@ -200,6 +269,31 @@ async function main() {
         console.log("\n----------------------------------------");
     }
 
+    
+    // Test contribution adding
+
+    /*
+    console.log("\nAdding a test contribution...");
+    await campaignManager.addContribution(
+        campaigns[1].id,  
+        2,              // data_count
+        "Test contribution data",
+        true            // verified
+    );
+    */
+
+    // Get and display contributions
+    console.log("\nListing contributions for campaign...");
+    const contributions = await campaignManager.getCampaignContributions(campaigns[0].id);
+    for (const contribution of contributions) {
+        console.log("\nContribution Details:");
+        console.log("Campaign ID:", contribution.campaign_id);
+        console.log("Contributor:", contribution.contributor);
+        console.log("Data Count:", contribution.data_count);
+        console.log("Data:", contribution.data);
+        console.log("Verified:", contribution.verified);
+        console.log("\n----------------------------------------");
+    }
 }
 
 main().catch(console.error);

@@ -4,6 +4,8 @@ module escrow_manager::EscrowManager {
     use aptos_framework::coin::{Self};
     use aptos_framework::aptos_coin::AptosCoin;
 
+    friend contribution_manager::ContributionManager;
+
     /// Escrow structure
     struct EscrowStore has key {
         escrows: Table<u64, u64>, // campaign_id -> amount
@@ -59,7 +61,30 @@ module escrow_manager::EscrowManager {
         coin::transfer<AptosCoin>(account, recipient, amount);
     }
 
-    /// Displays the amount of locked funds
+    /// Releases funds for data contribution
+    public(friend) fun release_funds_for_data(
+        account: &signer,
+        campaign_id: u64,
+        recipient: address,
+        store_addr: address,
+        amount: u64
+    ) acquires EscrowStore {
+        let store = borrow_global_mut<EscrowStore>(store_addr);
+        
+        // Check if there are locked funds for the campaign
+        assert!(table::contains(&store.escrows, campaign_id), ERR_ESCROW_NOT_FOUND);
+
+        let locked_amount = *table::borrow(&store.escrows, campaign_id);
+        assert!(locked_amount >= amount, ERR_NOT_ENOUGH_BALANCE);
+
+        // Update the locked amount
+        table::upsert(&mut store.escrows, campaign_id, locked_amount - amount);
+
+        // Transfer the funds to the recipient
+        coin::transfer<AptosCoin>(account, recipient, amount);
+    }
+
+    // Displays the amount of locked funds
     #[view]
     public fun get_locked_amount(campaign_id: u64, store_addr: address): u64 acquires EscrowStore {
         let store = borrow_global<EscrowStore>(store_addr);

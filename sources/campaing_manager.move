@@ -9,8 +9,8 @@ module campaign_manager::CampaignManager {
         id: u64,
         creator: address,
         data_spec: vector<u8>,
-        quality_criteria: vector<u8>,
         reward_pool: u64,
+        unit_price: u64,
         active: bool,
     }
     
@@ -35,7 +35,7 @@ module campaign_manager::CampaignManager {
     public entry fun create_campaign(
         account: &signer,
         data_spec: vector<u8>,
-        quality_criteria: vector<u8>,
+        unit_price: u64,
         reward_pool: u64
     ) acquires CampaignStore {
         // Get store from module address
@@ -51,7 +51,7 @@ module campaign_manager::CampaignManager {
             id,
             creator: signer::address_of(account),
             data_spec,
-            quality_criteria,
+            unit_price,
             reward_pool,
             active: true,
         };
@@ -79,5 +79,12 @@ module campaign_manager::CampaignManager {
             i = i + 1;
         };
         campaigns
+    }
+
+    // Returns the unit price of a campaign
+    #[view]
+    public fun get_unit_price(campaign_id: u64): u64 acquires CampaignStore {
+        let campaign = get_campaign(campaign_id);
+        campaign.unit_price
     }
 }
