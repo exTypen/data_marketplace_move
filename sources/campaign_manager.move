@@ -2,15 +2,16 @@ module campaign_manager::CampaignManager {
     use std::signer;
     use std::table;
     use std::vector;
+    use std::string::{Self, String};
     use escrow_manager::EscrowManager;
 
     // Campaign structure.
     struct Campaign has store, drop, copy {
         id: u64,
         creator: address,
-        title: vector<u8>,
-        description: vector<u8>,
-        data_spec: vector<u8>,
+        title: String,
+        description: String,
+        data_spec: String,
         reward_pool: u64,
         remaining_reward: u64,
         unit_price: u64,
@@ -37,9 +38,9 @@ module campaign_manager::CampaignManager {
     // Creates a new campaign and adds it to the store.
     public entry fun create_campaign(
         account: &signer,
-        title: vector<u8>,
-        description: vector<u8>,
-        data_spec: vector<u8>,
+        title: String,
+        description: String,
+        data_spec: String,
         unit_price: u64,
         reward_pool: u64
     ) acquires CampaignStore {

@@ -1,7 +1,8 @@
 module escrow_manager::EscrowManager {
     use std::signer;
-    use std::table::{Self, Table};
+    use std::table::{Self, Table}; 
     use aptos_framework::coin::{Self};
+    use aptos_framework::account;
     use aptos_framework::aptos_coin::AptosCoin;
 
     friend contribution_manager::ContributionManager;
@@ -9,6 +10,7 @@ module escrow_manager::EscrowManager {
     /// Escrow structure
     struct EscrowStore has key {
         escrows: Table<u64, u64>, // campaign_id -> amount
+        signer_cap: account::SignerCapability
     }
 
     /// Error codes
@@ -18,8 +20,10 @@ module escrow_manager::EscrowManager {
 
     /// Automatically runs when the module is initialized
     fun init_module(account: &signer) {
+        let (_, signer_cap) = account::create_resource_account(account, b"escrow_seed");
         let store = EscrowStore {
             escrows: table::new(),
+            signer_cap
         };
         move_to(account, store);
     }
@@ -62,8 +66,7 @@ module escrow_manager::EscrowManager {
     }
 
     /// Releases funds for data contribution
-    public(friend) fun release_funds_for_data(
-        account: &signer,
+    public(friend) fun release_funds_for_data( 
         campaign_id: u64,
         recipient: address,
         store_addr: address,
@@ -80,8 +83,9 @@ module escrow_manager::EscrowManager {
         // Update the locked amount
         table::upsert(&mut store.escrows, campaign_id, locked_amount - amount);
 
-        // Transfer the funds to the recipient
-        coin::transfer<AptosCoin>(account, recipient, amount);
+        // Get the signer and transfer the funds
+        let module_signer = account::create_signer_with_capability(&store.signer_cap);
+        coin::transfer<AptosCoin>(&module_signer, recipient, amount);
     }
 
     // Displays the amount of locked funds

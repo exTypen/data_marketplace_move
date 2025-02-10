@@ -4,12 +4,12 @@ version = "1.0.0"
 authors = []
 
 [addresses]
-campaign_manager = "0xea810f84d376c13e44a663cf271c45731076218407ae1760a4ac85b3d955a0f6"
-escrow_manager = "0xea810f84d376c13e44a663cf271c45731076218407ae1760a4ac85b3d955a0f6"
-contribution_manager = "0xea810f84d376c13e44a663cf271c45731076218407ae1760a4ac85b3d955a0f6"
+campaign_manager = "0xb9f8c8ea4bbed98ca4ebef77bd9259cba6da2322b7bf7ce8a1b2ee018b095a77"
+escrow_manager = "0xb9f8c8ea4bbed98ca4ebef77bd9259cba6da2322b7bf7ce8a1b2ee018b095a77"
+contribution_manager = "0xb9f8c8ea4bbed98ca4ebef77bd9259cba6da2322b7bf7ce8a1b2ee018b095a77"
 
 
 [dependencies.AptosFramework]
 git = "https://github.com/aptos-labs/aptos-framework.git"
-rev = "devnet"
+rev = "main"
 subdir = "aptos-framework"

@@ -2,6 +2,7 @@ module contribution_manager::ContributionManager {
     use std::signer;
     use std::vector;
     use std::table::{Self, Table};
+    use std::string::{Self, String};
     use campaign_manager::CampaignManager;
     use escrow_manager::EscrowManager;
 
@@ -10,7 +11,7 @@ module contribution_manager::ContributionManager {
         campaign_id: u64,
         contributor: address,
         data_count: u64,
-        data: vector<u8>,
+        data: String,
         verified: bool,
     }
 
@@ -35,7 +36,7 @@ module contribution_manager::ContributionManager {
         account: &signer,
         campaign_id: u64,
         data_count: u64,
-        data: vector<u8>,
+        data: String,
         verified: bool
     ) acquires ContributionStore {
         // Check the existence of the campaign and its details
@@ -66,7 +67,6 @@ module contribution_manager::ContributionManager {
             
             // Release the funds from the escrow for data contribution
             EscrowManager::release_funds_for_data(
-                account,
                 campaign_id,
                 signer::address_of(account),
                 @campaign_manager,
