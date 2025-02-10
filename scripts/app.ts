@@ -35,7 +35,7 @@ class CampaignManager {
         this.account = new AptosAccount(
             HexString.ensure(privateKeyHex).toUint8Array()
         );
-        this.moduleAddress = "0xea810f84d376c13e44a663cf271c45731076218407ae1760a4ac85b3d955a0f6";
+        this.moduleAddress = "0x3a63345a145969c662e862a7dfcec878d6cde75b17a878c63409142a7bb2f8c4";
     }
 
     getAddress(): string {
@@ -207,12 +207,10 @@ async function main() {
     // Add APT to account
     console.log("\nAdding APT to account...");
     await campaignManager.fundAccount();
-
-
     
 
     // Create new campaign
-    /*
+    
     console.log("\nCreating new campaign...");
     await campaignManager.createCampaign(
         "Test Campaign 4",
@@ -221,7 +219,7 @@ async function main() {
         1_000_000,   // 0.01 APT unit price
         50_000_000  // 0.5 APT reward pool
     );
-    */
+    
     
     // List all campaigns
     console.log("\nListing campaigns...");
@@ -243,20 +241,18 @@ async function main() {
 
     
     // Test contribution adding
-
     
     console.log("\nAdding a test contribution...");
     await campaignManager.addContribution(
-        campaigns[1].id,  
+        campaigns[0].id,  
         2,              // data_count
         "Test contribution data",
         true            // verified
     );
     
-
     // Get and display contributions
     console.log("\nListing contributions for campaign...");
-    const contributions = await campaignManager.getCampaignContributions(campaigns[1].id);
+    const contributions = await campaignManager.getCampaignContributions(campaigns[0].id);
     for (const contribution of contributions) {
         console.log("\nContribution Details:");
         console.log("Campaign ID:", contribution.campaign_id);

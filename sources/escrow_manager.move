@@ -3,12 +3,14 @@ module escrow_manager::EscrowManager {
     use std::table::{Self, Table};
     use aptos_framework::coin::{Self};
     use aptos_framework::aptos_coin::AptosCoin;
+    use aptos_framework::account;
 
     friend contribution_manager::ContributionManager;
 
     /// Escrow structure
     struct EscrowStore has key {
         escrows: Table<u64, u64>, // campaign_id -> amount
+        signer_cap: account::SignerCapability,
     }
 
     /// Error codes
@@ -18,8 +20,16 @@ module escrow_manager::EscrowManager {
 
     /// Automatically runs when the module is initialized
     fun init_module(account: &signer) {
+        let (resource_signer, signer_cap) = account::create_resource_account(account, b"escrow_manager");
+        
+        // Register AptosCoin store for the resource account
+        if (!coin::is_account_registered<AptosCoin>(signer::address_of(&resource_signer))) {
+            coin::register<AptosCoin>(&resource_signer);
+        };
+
         let store = EscrowStore {
             escrows: table::new(),
+            signer_cap,
         };
         move_to(account, store);
     }
@@ -34,11 +44,14 @@ module escrow_manager::EscrowManager {
         // Check if the user has enough balance
         assert!(coin::balance<AptosCoin>(signer::address_of(account)) >= amount, ERR_NOT_ENOUGH_BALANCE);
 
-        // Transfer the funds
-        coin::transfer<AptosCoin>(account, store_addr, amount);
+        let store = borrow_global_mut<EscrowStore>(store_addr);
+        let resource_signer = account::create_signer_with_capability(&store.signer_cap);
+        let resource_addr = signer::address_of(&resource_signer);
+
+        // Transfer the funds to resource account
+        coin::transfer<AptosCoin>(account, resource_addr, amount);
 
         // Create the escrow record
-        let store = borrow_global_mut<EscrowStore>(store_addr);
         table::add(&mut store.escrows, campaign_id, amount);
     }
 
@@ -63,7 +76,6 @@ module escrow_manager::EscrowManager {
 
     /// Releases funds for data contribution
     public(friend) fun release_funds_for_data(
-        account: &signer,
         campaign_id: u64,
         recipient: address,
         store_addr: address,
@@ -80,8 +92,9 @@ module escrow_manager::EscrowManager {
         // Update the locked amount
         table::upsert(&mut store.escrows, campaign_id, locked_amount - amount);
 
-        // Transfer the funds to the recipient
-        coin::transfer<AptosCoin>(account, recipient, amount);
+        // Transfer directly from store_addr
+        let account_signer = account::create_signer_with_capability(&store.signer_cap);
+        coin::transfer<AptosCoin>(&account_signer, recipient, amount);
     }
 
     // Displays the amount of locked funds

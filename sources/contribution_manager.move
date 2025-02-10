@@ -66,7 +66,6 @@ module contribution_manager::ContributionManager {
             
             // Release the funds from the escrow for data contribution
             EscrowManager::release_funds_for_data(
-                account,
                 campaign_id,
                 signer::address_of(account),
                 @campaign_manager,
