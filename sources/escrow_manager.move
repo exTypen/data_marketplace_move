@@ -116,21 +116,21 @@ module escrow_manager::EscrowManager {
 
     #[test]
     fun test_lock_funds() acquires EscrowStore {
-        // Test hesaplarini olustur
+        // Create test accounts
         let test_account = account::create_account_for_test(@0x1);
         let escrow_manager = account::create_account_for_test(@escrow_manager);
         
-        // AptosCoin'i baslat
+        // Initialize AptosCoin
         let framework_signer = account::create_account_for_test(@0x1);
         let (burn_cap, mint_cap) = aptos_coin::initialize_for_test(&framework_signer);
 
-        // Test hesaplari icin coin kaydi olustur ve bakiye ekle
+        // Create coin records for test accounts and add balance
         coin::register<aptos_coin::AptosCoin>(&test_account);
         coin::register<aptos_coin::AptosCoin>(&escrow_manager);
         let coins = coin::mint<aptos_coin::AptosCoin>(10000, &mint_cap);
         coin::deposit(signer::address_of(&test_account), coins);
         
-        // Modulu baslat ve resource account'u kaydet
+        // Initialize module and register resource account
         init_module(&escrow_manager);
         let store = borrow_global<EscrowStore>(@escrow_manager);
         let resource_signer = account::create_signer_with_capability(&store.signer_cap);
@@ -138,41 +138,41 @@ module escrow_manager::EscrowManager {
             coin::register<AptosCoin>(&resource_signer);
         };
         
-        // Test verilerini hazirla
+        // Prepare test data
         let campaign_id = 1;
         let amount = 1000;
         
-        // Fonlari kilitle
+        // Lock funds
         lock_funds(&test_account, campaign_id, amount, @escrow_manager);
         
-        // Kilitli miktari kontrol et
+        // Check locked amount
         let locked_amount = get_locked_amount(campaign_id, @escrow_manager);
         assert!(locked_amount == amount, 1);
 
-        // Yetenekleri temizle
+        // Clean up capabilities
         coin::destroy_burn_cap(burn_cap);
         coin::destroy_mint_cap(mint_cap);
     }
 
     #[test]
     fun test_release_funds() acquires EscrowStore {
-        // Test hesaplarini olustur
+        // Create test accounts
         let test_account = account::create_account_for_test(@0x1);
         let recipient = account::create_account_for_test(@0x2);
         let escrow_manager = account::create_account_for_test(@escrow_manager);
         
-        // AptosCoin'i baslat
+        // Initialize AptosCoin
         let framework_signer = account::create_account_for_test(@0x1);
         let (burn_cap, mint_cap) = aptos_coin::initialize_for_test(&framework_signer);
 
-        // Test hesaplari icin coin kaydi olustur ve bakiye ekle
+        // Create coin records for test accounts and add balance
         coin::register<aptos_coin::AptosCoin>(&test_account);
         coin::register<aptos_coin::AptosCoin>(&recipient);
         coin::register<aptos_coin::AptosCoin>(&escrow_manager);
         let coins = coin::mint<aptos_coin::AptosCoin>(10000, &mint_cap);
         coin::deposit(signer::address_of(&test_account), coins);
         
-        // Modulu baslat ve resource account'u kaydet
+        // Initialize module and register resource account
         init_module(&escrow_manager);
         let store = borrow_global<EscrowStore>(@escrow_manager);
         let resource_signer = account::create_signer_with_capability(&store.signer_cap);
@@ -180,44 +180,44 @@ module escrow_manager::EscrowManager {
             coin::register<AptosCoin>(&resource_signer);
         };
         
-        // Test verilerini hazirla
+        // Prepare test data
         let campaign_id = 1;
         let amount = 1000;
         
-        // Fonlari kilitle
+        // Lock funds
         lock_funds(&test_account, campaign_id, amount, @escrow_manager);
         
-        // Fonlari serbest birak
+        // Release funds
         release_funds(&escrow_manager, campaign_id, signer::address_of(&recipient), @escrow_manager);
         
-        // Bakiyeleri kontrol et
+        // Check balances
         let recipient_balance = coin::balance<aptos_coin::AptosCoin>(signer::address_of(&recipient));
         assert!(recipient_balance == amount, 1);
 
-        // Yetenekleri temizle
+        // Clean up capabilities
         coin::destroy_burn_cap(burn_cap);
         coin::destroy_mint_cap(mint_cap);
     }
 
     #[test]
     fun test_release_funds_for_data() acquires EscrowStore {
-        // Test hesaplarini olustur
+        // Create test accounts
         let test_account = account::create_account_for_test(@0x1);
         let contributor = account::create_account_for_test(@0x2);
         let escrow_manager = account::create_account_for_test(@escrow_manager);
         
-        // AptosCoin'i baslat
+        // Initialize AptosCoin
         let framework_signer = account::create_account_for_test(@0x1);
         let (burn_cap, mint_cap) = aptos_coin::initialize_for_test(&framework_signer);
 
-        // Test hesaplari icin coin kaydi olustur ve bakiye ekle
+        // Create coin records for test accounts and add balance
         coin::register<aptos_coin::AptosCoin>(&test_account);
         coin::register<aptos_coin::AptosCoin>(&contributor);
         coin::register<aptos_coin::AptosCoin>(&escrow_manager);
         let coins = coin::mint<aptos_coin::AptosCoin>(10000, &mint_cap);
         coin::deposit(signer::address_of(&test_account), coins);
         
-        // Modulu baslat ve resource account'u kaydet
+        // Initialize module and register resource account
         init_module(&escrow_manager);
         let store = borrow_global<EscrowStore>(@escrow_manager);
         let resource_signer = account::create_signer_with_capability(&store.signer_cap);
@@ -225,24 +225,24 @@ module escrow_manager::EscrowManager {
             coin::register<AptosCoin>(&resource_signer);
         };
         
-        // Test verilerini hazirla
+        // Prepare test data
         let campaign_id = 1;
         let total_amount = 1000;
         let release_amount = 500;
         
-        // Fonlari kilitle
+        // Lock funds
         lock_funds(&test_account, campaign_id, total_amount, @escrow_manager);
         
-        // Veri katkisi icin fonlari serbest birak
+        // Release funds for data contribution
         release_funds_for_data(campaign_id, signer::address_of(&contributor), @escrow_manager, release_amount);
         
-        // Bakiyeleri ve kalan kilitli miktari kontrol et
+        // Check balances and remaining locked amount
         let contributor_balance = coin::balance<aptos_coin::AptosCoin>(signer::address_of(&contributor));
         let remaining_locked = get_locked_amount(campaign_id, @escrow_manager);
         assert!(contributor_balance == release_amount, 1);
         assert!(remaining_locked == total_amount - release_amount, 2);
 
-        // Yetenekleri temizle
+        // Clean up capabilities
         coin::destroy_burn_cap(burn_cap);
         coin::destroy_mint_cap(mint_cap);
     }
@@ -250,17 +250,17 @@ module escrow_manager::EscrowManager {
     #[test]
     #[expected_failure(abort_code = ERR_ESCROW_NOT_FOUND, location = Self)]
     fun test_get_locked_amount_nonexistent_campaign() acquires EscrowStore {
-        // Test hesabini olustur
+        // Create test account
         let escrow_manager = account::create_account_for_test(@escrow_manager);
         
-        // AptosCoin'i baslat
+        // Initialize AptosCoin
         let framework_signer = account::create_account_for_test(@0x1);
         let (burn_cap, mint_cap) = aptos_coin::initialize_for_test(&framework_signer);
 
-        // Escrow hesabi icin coin kaydi olustur
+        // Create coin record for escrow account
         coin::register<aptos_coin::AptosCoin>(&escrow_manager);
         
-        // Modulu baslat ve resource account'u kaydet
+        // Initialize module and register resource account
         init_module(&escrow_manager);
         let store = borrow_global<EscrowStore>(@escrow_manager);
         let resource_signer = account::create_signer_with_capability(&store.signer_cap);
@@ -268,10 +268,10 @@ module escrow_manager::EscrowManager {
             coin::register<AptosCoin>(&resource_signer);
         };
         
-        // Var olmayan kampanya icin kilitli miktari kontrol et
+        // Check locked amount for nonexistent campaign
         get_locked_amount(999, @escrow_manager);
 
-        // Yetenekleri temizle
+        // Clean up capabilities
         coin::destroy_burn_cap(burn_cap);
         coin::destroy_mint_cap(mint_cap);
     }

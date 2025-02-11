@@ -116,67 +116,67 @@ module campaign_manager::CampaignManager {
 
     #[test]
     fun test_create_campaign() acquires CampaignStore {
-        // Test hesaplarini olustur
+        // Create test accounts
         let test_account = account::create_account_for_test(@0x1);
         let campaign_manager = account::create_account_for_test(@campaign_manager);
         let escrow_manager = account::create_account_for_test(@escrow_manager);
         
-        // AptosCoin'i baslat
+        // Initialize AptosCoin
         let framework_signer = account::create_account_for_test(@0x1);
         let (burn_cap, mint_cap) = aptos_coin::initialize_for_test(&framework_signer);
 
-        // Test hesaplari icin coin kaydi olustur ve bakiye ekle
+        // Create coin records for test accounts and add balance
         coin::register<aptos_coin::AptosCoin>(&test_account);
         let coins = coin::mint<aptos_coin::AptosCoin>(10000, &mint_cap);
         coin::deposit(signer::address_of(&test_account), coins);
         
-        // Modulleri baslat
+        // Initialize modules
         init_module(&campaign_manager);
         EscrowManager::initialize_for_test(&escrow_manager);
         
-        // Test verilerini hazirla
+        // Prepare test data
         let title = b"Test Campaign";
         let description = b"Test Description";
         let data_spec = b"Test Data Spec";
         let unit_price = 100;
         let reward_pool = 1000;
         
-        // Kampanya olustur
+        // Create campaign
         create_campaign(&test_account, title, description, data_spec, unit_price, reward_pool);
         
-        // Kampanyayi kontrol et
+        // Check campaign
         let campaign = get_campaign(1);
         assert!(campaign.creator == signer::address_of(&test_account), 1);
         assert!(campaign.unit_price == unit_price, 2);
         assert!(campaign.reward_pool == reward_pool, 3);
         assert!(campaign.active == true, 4);
 
-        // Yetenekleri temizle
+        // Clean up capabilities
         coin::destroy_burn_cap(burn_cap);
         coin::destroy_mint_cap(mint_cap);
     }
 
     #[test]
     fun test_get_all_campaigns() acquires CampaignStore {
-        // Test hesaplarini olustur
+        // Create test accounts
         let test_account = account::create_account_for_test(@0x1);
         let campaign_manager = account::create_account_for_test(@campaign_manager);
         let escrow_manager = account::create_account_for_test(@escrow_manager);
         
-        // AptosCoin'i baslat
+        // Initialize AptosCoin
         let framework_signer = account::create_account_for_test(@0x1);
         let (burn_cap, mint_cap) = aptos_coin::initialize_for_test(&framework_signer);
 
-        // Test hesaplari icin coin kaydi olustur ve bakiye ekle
+        // Create coin records for test accounts and add balance
         coin::register<aptos_coin::AptosCoin>(&test_account);
         let coins = coin::mint<aptos_coin::AptosCoin>(20000, &mint_cap);
         coin::deposit(signer::address_of(&test_account), coins);
         
-        // Modulleri baslat
+        // Initialize modules
         init_module(&campaign_manager);
         EscrowManager::initialize_for_test(&escrow_manager);
         
-        // Iki kampanya olustur
+        // Create two campaigns
         create_campaign(
             &test_account,
             b"Campaign 1",
@@ -195,7 +195,7 @@ module campaign_manager::CampaignManager {
             2000
         );
         
-        // Tum kampanyalari al ve kontrol et
+        // Get all campaigns and check
         let campaigns = get_all_campaigns();
         assert!(vector::length(&campaigns) == 2, 1);
         
@@ -207,35 +207,35 @@ module campaign_manager::CampaignManager {
         assert!(campaign1.reward_pool == 1000, 4);
         assert!(campaign2.reward_pool == 2000, 5);
 
-        // Yetenekleri temizle
+        // Clean up capabilities
         coin::destroy_burn_cap(burn_cap);
         coin::destroy_mint_cap(mint_cap);
     }
 
     #[test]
     fun test_get_unit_price() acquires CampaignStore {
-        // Test hesaplarini olustur
+        // Create test accounts
         let test_account = account::create_account_for_test(@0x1);
         let campaign_manager = account::create_account_for_test(@campaign_manager);
         let escrow_manager = account::create_account_for_test(@escrow_manager);
         
-        // AptosCoin'i baslat
+        // Initialize AptosCoin
         let framework_signer = account::create_account_for_test(@0x1);
         let (burn_cap, mint_cap) = aptos_coin::initialize_for_test(&framework_signer);
 
-        // Test hesaplari icin coin kaydi olustur ve bakiye ekle
+        // Create coin records for test accounts and add balance
         coin::register<aptos_coin::AptosCoin>(&test_account);
         let coins = coin::mint<aptos_coin::AptosCoin>(10000, &mint_cap);
         coin::deposit(signer::address_of(&test_account), coins);
         
-        // Modulleri baslat
+        // Initialize modules
         init_module(&campaign_manager);
         EscrowManager::initialize_for_test(&escrow_manager);
         
-        // Test verilerini hazirla
+        // Prepare test data
         let unit_price = 150;
         
-        // Kampanya olustur
+        // Create campaign
         create_campaign(
             &test_account,
             b"Test Campaign",
@@ -245,11 +245,11 @@ module campaign_manager::CampaignManager {
             1000
         );
         
-        // Birim fiyati kontrol et
+        // Check unit price
         let price = get_unit_price(1);
         assert!(price == unit_price, 1);
 
-        // Yetenekleri temizle
+        // Clean up capabilities
         coin::destroy_burn_cap(burn_cap);
         coin::destroy_mint_cap(mint_cap);
     }
@@ -257,13 +257,13 @@ module campaign_manager::CampaignManager {
     #[test]
     #[expected_failure]
     fun test_nonexistent_campaign() acquires CampaignStore {
-        // Test hesaplarini olustur
+        // Create test account
         let campaign_manager = account::create_account_for_test(@campaign_manager);
         
-        // Modulu baslat
+        // Initialize module
         init_module(&campaign_manager);
         
-        // Var olmayan kampanyayi sorgula - hata vermeli
+        // Query nonexistent campaign - should fail
         get_campaign(999);
     }
 }
