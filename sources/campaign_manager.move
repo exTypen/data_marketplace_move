@@ -101,4 +101,169 @@ module campaign_manager::CampaignManager {
         let campaign = get_campaign(campaign_id);
         campaign.unit_price
     }
+
+    #[test_only]
+    public fun initialize_for_test(account: &signer) {
+        init_module(account);
+    }
+
+    #[test_only]
+    use aptos_framework::account;
+    #[test_only]
+    use aptos_framework::aptos_coin;
+    #[test_only]
+    use aptos_framework::coin;
+
+    #[test]
+    fun test_create_campaign() acquires CampaignStore {
+        // Test hesaplarini olustur
+        let test_account = account::create_account_for_test(@0x1);
+        let campaign_manager = account::create_account_for_test(@campaign_manager);
+        let escrow_manager = account::create_account_for_test(@escrow_manager);
+        
+        // AptosCoin'i baslat
+        let framework_signer = account::create_account_for_test(@0x1);
+        let (burn_cap, mint_cap) = aptos_coin::initialize_for_test(&framework_signer);
+
+        // Test hesaplari icin coin kaydi olustur ve bakiye ekle
+        coin::register<aptos_coin::AptosCoin>(&test_account);
+        let coins = coin::mint<aptos_coin::AptosCoin>(10000, &mint_cap);
+        coin::deposit(signer::address_of(&test_account), coins);
+        
+        // Modulleri baslat
+        init_module(&campaign_manager);
+        EscrowManager::initialize_for_test(&escrow_manager);
+        
+        // Test verilerini hazirla
+        let title = b"Test Campaign";
+        let description = b"Test Description";
+        let data_spec = b"Test Data Spec";
+        let unit_price = 100;
+        let reward_pool = 1000;
+        
+        // Kampanya olustur
+        create_campaign(&test_account, title, description, data_spec, unit_price, reward_pool);
+        
+        // Kampanyayi kontrol et
+        let campaign = get_campaign(1);
+        assert!(campaign.creator == signer::address_of(&test_account), 1);
+        assert!(campaign.unit_price == unit_price, 2);
+        assert!(campaign.reward_pool == reward_pool, 3);
+        assert!(campaign.active == true, 4);
+
+        // Yetenekleri temizle
+        coin::destroy_burn_cap(burn_cap);
+        coin::destroy_mint_cap(mint_cap);
+    }
+
+    #[test]
+    fun test_get_all_campaigns() acquires CampaignStore {
+        // Test hesaplarini olustur
+        let test_account = account::create_account_for_test(@0x1);
+        let campaign_manager = account::create_account_for_test(@campaign_manager);
+        let escrow_manager = account::create_account_for_test(@escrow_manager);
+        
+        // AptosCoin'i baslat
+        let framework_signer = account::create_account_for_test(@0x1);
+        let (burn_cap, mint_cap) = aptos_coin::initialize_for_test(&framework_signer);
+
+        // Test hesaplari icin coin kaydi olustur ve bakiye ekle
+        coin::register<aptos_coin::AptosCoin>(&test_account);
+        let coins = coin::mint<aptos_coin::AptosCoin>(20000, &mint_cap);
+        coin::deposit(signer::address_of(&test_account), coins);
+        
+        // Modulleri baslat
+        init_module(&campaign_manager);
+        EscrowManager::initialize_for_test(&escrow_manager);
+        
+        // Iki kampanya olustur
+        create_campaign(
+            &test_account,
+            b"Campaign 1",
+            b"Description 1",
+            b"Data Spec 1",
+            100,
+            1000
+        );
+        
+        create_campaign(
+            &test_account,
+            b"Campaign 2",
+            b"Description 2",
+            b"Data Spec 2",
+            200,
+            2000
+        );
+        
+        // Tum kampanyalari al ve kontrol et
+        let campaigns = get_all_campaigns();
+        assert!(vector::length(&campaigns) == 2, 1);
+        
+        let campaign1 = vector::borrow(&campaigns, 0);
+        let campaign2 = vector::borrow(&campaigns, 1);
+        
+        assert!(campaign1.unit_price == 100, 2);
+        assert!(campaign2.unit_price == 200, 3);
+        assert!(campaign1.reward_pool == 1000, 4);
+        assert!(campaign2.reward_pool == 2000, 5);
+
+        // Yetenekleri temizle
+        coin::destroy_burn_cap(burn_cap);
+        coin::destroy_mint_cap(mint_cap);
+    }
+
+    #[test]
+    fun test_get_unit_price() acquires CampaignStore {
+        // Test hesaplarini olustur
+        let test_account = account::create_account_for_test(@0x1);
+        let campaign_manager = account::create_account_for_test(@campaign_manager);
+        let escrow_manager = account::create_account_for_test(@escrow_manager);
+        
+        // AptosCoin'i baslat
+        let framework_signer = account::create_account_for_test(@0x1);
+        let (burn_cap, mint_cap) = aptos_coin::initialize_for_test(&framework_signer);
+
+        // Test hesaplari icin coin kaydi olustur ve bakiye ekle
+        coin::register<aptos_coin::AptosCoin>(&test_account);
+        let coins = coin::mint<aptos_coin::AptosCoin>(10000, &mint_cap);
+        coin::deposit(signer::address_of(&test_account), coins);
+        
+        // Modulleri baslat
+        init_module(&campaign_manager);
+        EscrowManager::initialize_for_test(&escrow_manager);
+        
+        // Test verilerini hazirla
+        let unit_price = 150;
+        
+        // Kampanya olustur
+        create_campaign(
+            &test_account,
+            b"Test Campaign",
+            b"Test Description",
+            b"Test Data Spec",
+            unit_price,
+            1000
+        );
+        
+        // Birim fiyati kontrol et
+        let price = get_unit_price(1);
+        assert!(price == unit_price, 1);
+
+        // Yetenekleri temizle
+        coin::destroy_burn_cap(burn_cap);
+        coin::destroy_mint_cap(mint_cap);
+    }
+
+    #[test]
+    #[expected_failure]
+    fun test_nonexistent_campaign() acquires CampaignStore {
+        // Test hesaplarini olustur
+        let campaign_manager = account::create_account_for_test(@campaign_manager);
+        
+        // Modulu baslat
+        init_module(&campaign_manager);
+        
+        // Var olmayan kampanyayi sorgula - hata vermeli
+        get_campaign(999);
+    }
 }
