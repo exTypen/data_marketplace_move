@@ -35,7 +35,7 @@ class CampaignManager {
         this.account = new AptosAccount(
             HexString.ensure(privateKeyHex).toUint8Array()
         );
-        this.moduleAddress = "0x3a63345a145969c662e862a7dfcec878d6cde75b17a878c63409142a7bb2f8c4";
+        this.moduleAddress = "0xf14c3952221b43ae6f48e5517c334bee77092176b736790d1ad95b0cfe0658f6";
     }
 
     getAddress(): string {
@@ -142,18 +142,21 @@ class CampaignManager {
     async addContribution(
         campaignId: number,
         dataCount: number,
-        data: string,
-        verified: boolean = false
+        storeKey: string,
+        score: number,
+        signature: string
     ): Promise<void> {
         try {
+            const signatureBytes = Array.from(Buffer.from(signature, 'hex'));
             const addContribTxn = await this.client.generateTransaction(this.account.address(), {
                 function: `${this.moduleAddress}::ContributionManager::add_contribution`,
                 type_arguments: [],
                 arguments: [
                     campaignId.toString(),
                     dataCount.toString(),
-                    Array.from(Buffer.from(data)),
-                    verified
+                    Array.from(Buffer.from(storeKey)),
+                    score.toString(),
+                    signatureBytes
                 ]
             });
 
@@ -211,6 +214,7 @@ async function main() {
 
     // Create new campaign
     
+    /*
     console.log("\nCreating new campaign...");
     await campaignManager.createCampaign(
         "Test Campaign 4",
@@ -237,19 +241,21 @@ async function main() {
         console.log("Unit Price:", campaign.unit_price / 100_000_000, "APT");
         console.log("Active:", campaign.active);
         console.log("\n----------------------------------------");
-    }
+    }*/
 
     
     // Test contribution adding
     
     console.log("\nAdding a test contribution...");
     await campaignManager.addContribution(
-        campaigns[0].id,  
+        1,  
         2,              // data_count
-        "Test contribution data",
-        true            // verified
+        "ipfs_keyy",
+        85,
+        "a5bb8456a09ae077bdd68b5f68dc07e74fc310e6266ffe2a0c93476cf1ff665b63bfbf2f8345546367039a49a26642b951c25e302df94760da673dc7b899a302"
     );
     
+     /*
     // Get and display contributions
     console.log("\nListing contributions for campaign...");
     const contributions = await campaignManager.getCampaignContributions(campaigns[0].id);
@@ -262,6 +268,7 @@ async function main() {
         console.log("Verified:", contribution.verified);
         console.log("\n----------------------------------------");
     }
+    */
 }
 
 main().catch(console.error);
