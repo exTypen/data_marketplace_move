@@ -79,10 +79,9 @@ module escrow_manager::EscrowManager {
     public(friend) fun release_funds_for_data(
         campaign_id: u64,
         recipient: address,
-        store_addr: address,
         amount: u64
     ) acquires EscrowStore {
-        let store = borrow_global_mut<EscrowStore>(store_addr);
+        let store = borrow_global_mut<EscrowStore>(@escrow_manager);
         
         // Check if there are locked funds for the campaign
         assert!(table::contains(&store.escrows, campaign_id), ERR_ESCROW_NOT_FOUND);
@@ -234,7 +233,7 @@ module escrow_manager::EscrowManager {
         lock_funds(&test_account, campaign_id, total_amount, @escrow_manager);
         
         // Release funds for data contribution
-        release_funds_for_data(campaign_id, signer::address_of(&contributor), @escrow_manager, release_amount);
+        release_funds_for_data(campaign_id, signer::address_of(&contributor), release_amount);
         
         // Check balances and remaining locked amount
         let contributor_balance = coin::balance<aptos_coin::AptosCoin>(signer::address_of(&contributor));

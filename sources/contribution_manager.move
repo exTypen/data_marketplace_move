@@ -19,7 +19,7 @@ module contribution_manager::ContributionManager {
         campaign_id: u64,
         contributor: address,
         data_count: u64,
-        store_key: vector<u8>,
+        store_cid: vector<u8>,
         score: u64,
         signature: vector<u8>,
     }
@@ -44,7 +44,7 @@ module contribution_manager::ContributionManager {
     fun verify_contribution_signature(
         campaign_id: u64,
         data_count: u64,
-        store_key: vector<u8>,
+        store_cid: vector<u8>,
         score: u64,
         signature: vector<u8>
     ): bool {
@@ -53,9 +53,9 @@ module contribution_manager::ContributionManager {
         vector::append(&mut message, bcs::to_bytes(&data_count));
         
         // vector<u8> serialization - same format as TypeScript
-        let store_key_len = vector::length(&store_key);
-        vector::append(&mut message, bcs::to_bytes(&(store_key_len as u64)));
-        vector::append(&mut message, store_key);
+        let store_cid_len = vector::length(&store_cid);
+        vector::append(&mut message, bcs::to_bytes(&(store_cid_len as u64)));
+        vector::append(&mut message, store_cid);
         
         vector::append(&mut message, bcs::to_bytes(&score));
 
@@ -73,47 +73,65 @@ module contribution_manager::ContributionManager {
         account: &signer,
         campaign_id: u64,
         data_count: u64,
-        store_key: vector<u8>,
+        store_cid: vector<u8>,
         score: u64,
         signature: vector<u8>,
     ) acquires ContributionStore {
-        // Check the existence of the campaign and its details
+        // Verify the signature
+        assert!(
+            verify_contribution_signature(campaign_id, data_count, store_cid, score, signature),
+            0 // Signature verification failed
+        );
+
         let contribution = Contribution {
             campaign_id,
             contributor: signer::address_of(account),
             data_count,
-            store_key,
+            store_cid,
             score,
             signature
         };
 
-        // Get the store
         let store = borrow_global_mut<ContributionStore>(@contribution_manager);
         
-        // If the contribution list for the campaign does not exist, create it
         if (!table::contains(&store.contributions, campaign_id)) {
             table::add(&mut store.contributions, campaign_id, vector::empty<Contribution>());
         };
         
-        // Add the contribution to the list
         let contributions = table::borrow_mut(&mut store.contributions, campaign_id);
         vector::push_back(contributions, contribution);
 
-        let verified = verify_contribution_signature(campaign_id, data_count, store_key, score, signature);
+        let unit_price = CampaignManager::get_unit_price(campaign_id);
+        let total_reward = data_count * unit_price;
+        
+        EscrowManager::release_funds_for_data(
+            campaign_id,
+            signer::address_of(account),
+            total_reward
+        );
+    }
 
-        // If verified is true, release the funds
-        if (verified) {
-            let unit_price = CampaignManager::get_unit_price(campaign_id);
-            let total_reward = data_count * unit_price;
-            
-            // Release the funds from the escrow for data contribution
-            EscrowManager::release_funds_for_data(
-                campaign_id,
-                signer::address_of(account),
-                @campaign_manager,
-                total_reward
-            );
+    // Get all contributions
+    #[view]
+    public fun get_all_contributions(): vector<Contribution> acquires ContributionStore {
+        let store = borrow_global<ContributionStore>(@contribution_manager);
+        let result = vector::empty<Contribution>();
+        let campaign_ids = CampaignManager::get_all_campaign_ids();
+        let i = 0;
+        while (i < vector::length(&campaign_ids)) {
+            let campaign_id = *vector::borrow(&campaign_ids, i);
+            if (table::contains(&store.contributions, campaign_id)) {
+                let campaign_contributions = table::borrow(&store.contributions, campaign_id);
+                let j = 0;
+                while (j < vector::length(campaign_contributions)) {
+                    let contribution = vector::borrow(campaign_contributions, j);
+                    vector::push_back(&mut result, *contribution);
+                    j = j + 1;
+                };
+            };
+            i = i + 1;
         };
+        result
     }
 
     // Get all contributions for a campaign
@@ -121,9 +139,34 @@ module contribution_manager::ContributionManager {
     public fun get_campaign_contributions(campaign_id: u64): vector<Contribution> acquires ContributionStore {
         let store = borrow_global<ContributionStore>(@contribution_manager);
         if (!table::contains(&store.contributions, campaign_id)) {
-            return vector::empty<Contribution>()
+            return vector::empty<Contribution>();
         };
         *table::borrow(&store.contributions, campaign_id)
+    }
+
+    // Get all contributions for a contributor
+    #[view]
+    public fun get_contributor_contributions(contributor: address): vector<Contribution> acquires ContributionStore {
+        let store = borrow_global<ContributionStore>(@contribution_manager);
+        let result = vector::empty<Contribution>();
+        let campaign_ids = CampaignManager::get_all_campaign_ids();
+        let i = 0;
+        while (i < vector::length(&campaign_ids)) {
+            let campaign_id = *vector::borrow(&campaign_ids, i);
+            if (table::contains(&store.contributions, campaign_id)) {
+                let campaign_contributions = table::borrow(&store.contributions, campaign_id);
+                let j = 0;
+                while (j < vector::length(campaign_contributions)) {
+                    let contribution = vector::borrow(campaign_contributions, j);
+                    if (contribution.contributor == contributor) {
+                        vector::push_back(&mut result, *contribution);
+                    };
+                    j = j + 1;
+                };
+            };
+            i = i + 1;
+        };
+        result
     }
 
     #[test]
@@ -154,26 +197,28 @@ module contribution_manager::ContributionManager {
         let unit_price = 100;
         let title = b"Test Campaign";
         let description = b"Test Description";
-        let data_spec = b"Test Data Spec";
+        let prompt = b"Test Prompt";
+        let minimum_contribution = 0;
         let reward_pool = 1000;
         
         CampaignManager::create_campaign(
             &campaign_manager_account,
             title,
             description,
-            data_spec,
+            prompt,
             unit_price,
+            minimum_contribution,
             reward_pool
         );
         
         // Prepare test data
         let data_count = 1;
-        let store_key = b"test_store_key";
+        let store_cid = b"test";
         let score = 100;
-        let signature = x"385b82c2c661ee95ee7e012dccaf3aee4c35182550d1969f09aba17b22dd8a3375d5923d1a92e20d424b4062ac19e4ea68bab8a966905604d1bfc4d3b47c780c";
+        let signature = x"c163a47a4a843d7ae8f2e5c72143a2098ff49fe8acb98a4392eba189c8acbe3be8c21b090c2d39dab78c01cfdd58204764223c50c5f48efe6fbb6d1d4d426706";
         
         // Add contribution
-        add_contribution(&test_account, campaign_id, data_count, store_key, score, signature);
+        add_contribution(&test_account, campaign_id, data_count, store_cid, score, signature);
         
         // Check contributions
         let contributions = get_campaign_contributions(campaign_id);
@@ -218,26 +263,28 @@ module contribution_manager::ContributionManager {
         let unit_price = 100;
         let title = b"Test Campaign";
         let description = b"Test Description";
-        let data_spec = b"Test Data Spec";
+        let prompt = b"Test Prompt";
+        let minimum_contribution = 0;
         let reward_pool = 1000;
         
         CampaignManager::create_campaign(
             &campaign_manager,
             title,
             description,
-            data_spec,
+            prompt,
             unit_price,
+            minimum_contribution,
             reward_pool
         );
         
         // Prepare test data
         let data_count = 1;
-        let store_key = b"test_store_key";
+        let store_cid = b"test";
         let score = 100;
-        let signature = x"385b82c2c661ee95ee7e012dccaf3aee4c35182550d1969f09aba17b22dd8a3375d5923d1a92e20d424b4062ac19e4ea68bab8a966905604d1bfc4d3b47c780c"; // Example signature for test
+        let signature = x"c163a47a4a843d7ae8f2e5c72143a2098ff49fe8acb98a4392eba189c8acbe3be8c21b090c2d39dab78c01cfdd58204764223c50c5f48efe6fbb6d1d4d426706";
         
         // Add contribution
-        add_contribution(&test_account, campaign_id, data_count, store_key, score, signature);
+        add_contribution(&test_account, campaign_id, data_count, store_cid, score, signature);
         
         // Check contributions
         let contributions = get_campaign_contributions(campaign_id);
@@ -291,28 +338,31 @@ module contribution_manager::ContributionManager {
         let unit_price = 100;
         let title = b"Test Campaign";
         let description = b"Test Description";
-        let data_spec = b"Test Data Spec";
+        let prompt = b"Test Prompt";
+        let minimum_contribution = 0;
         let reward_pool = 1000;
         
         CampaignManager::create_campaign(
             &campaign_manager_account,
             title,
             description,
-            data_spec,
+            prompt,
             unit_price,
+            minimum_contribution,
             reward_pool
         );
         
         // Prepare test data
-        let store_key = b"test_store_key";
+        let store_cid = b"test";
+        let data_count = 1;
         let score = 100;
-        let signature = x"385b82c2c661ee95ee7e012dccaf3aee4c35182550d1969f09aba17b22dd8a3375d5923d1a92e20d424b4062ac19e4ea68bab8a966905604d1bfc4d3b47c780c";
+        let signature = x"c163a47a4a843d7ae8f2e5c72143a2098ff49fe8acb98a4392eba189c8acbe3be8c21b090c2d39dab78c01cfdd58204764223c50c5f48efe6fbb6d1d4d426706";
         
         // Add first contribution
-        add_contribution(&test_account1, campaign_id, 5, store_key, score, signature);
+        add_contribution(&test_account1, campaign_id, data_count, store_cid, score, signature);
         
         // Add second contribution
-        add_contribution(&test_account2, campaign_id, 3, store_key, score, signature);
+        add_contribution(&test_account2, campaign_id, data_count, store_cid, score, signature);
         
         // Check contributions
         let contributions = get_campaign_contributions(campaign_id);
@@ -323,8 +373,8 @@ module contribution_manager::ContributionManager {
         
         assert!(contribution1.contributor == @0x1, 2);
         assert!(contribution2.contributor == @0x2, 3);
-        assert!(contribution1.data_count == 5, 4);
-        assert!(contribution2.data_count == 3, 5);
+        assert!(contribution1.data_count == 1, 4);
+        assert!(contribution2.data_count == 1, 5);
 
         // Clean up
         coin::destroy_burn_cap(burn_cap);

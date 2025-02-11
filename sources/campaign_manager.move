@@ -3,6 +3,7 @@ module campaign_manager::CampaignManager {
     use std::table;
     use std::vector;
     use escrow_manager::EscrowManager;
+    friend contribution_manager::ContributionManager;
 
     // Campaign structure.
     struct Campaign has store, drop, copy {
@@ -10,10 +11,11 @@ module campaign_manager::CampaignManager {
         creator: address,
         title: vector<u8>,
         description: vector<u8>,
-        data_spec: vector<u8>,
+        prompt: vector<u8>,
         reward_pool: u64,
         remaining_reward: u64,
         unit_price: u64,
+        minimum_contribution: u64,
         active: bool,
     }
     
@@ -39,8 +41,9 @@ module campaign_manager::CampaignManager {
         account: &signer,
         title: vector<u8>,
         description: vector<u8>,
-        data_spec: vector<u8>,
+        prompt: vector<u8>,
         unit_price: u64,
+        minimum_contribution: u64,
         reward_pool: u64
     ) acquires CampaignStore {
         // Get store from module address
@@ -57,8 +60,9 @@ module campaign_manager::CampaignManager {
             creator: signer::address_of(account),
             title,
             description,
-            data_spec,
+            prompt,
             unit_price,
+            minimum_contribution,
             reward_pool,
             remaining_reward: reward_pool,
             active: true,
@@ -102,6 +106,20 @@ module campaign_manager::CampaignManager {
         campaign.unit_price
     }
 
+    #[view]
+    public(friend) fun get_all_campaign_ids(): vector<u64> acquires CampaignStore {
+        let store = borrow_global<CampaignStore>(@campaign_manager);
+        let campaign_ids = vector::empty<u64>();
+        let i = 1;
+        while (i < store.next_id) {
+            if (table::contains(&store.campaigns, i)) {
+                vector::push_back(&mut campaign_ids, i);
+            };
+            i = i + 1;
+        };
+        campaign_ids
+    }
+
     #[test_only]
     public fun initialize_for_test(account: &signer) {
         init_module(account);
@@ -137,19 +155,24 @@ module campaign_manager::CampaignManager {
         // Prepare test data
         let title = b"Test Campaign";
         let description = b"Test Description";
-        let data_spec = b"Test Data Spec";
+        let prompt = b"Test Prompt";
         let unit_price = 100;
+        let minimum_contribution = 0;
         let reward_pool = 1000;
         
         // Create campaign
-        create_campaign(&test_account, title, description, data_spec, unit_price, reward_pool);
+        create_campaign(&test_account, title, description, prompt, unit_price, minimum_contribution, reward_pool);
         
         // Check campaign
         let campaign = get_campaign(1);
         assert!(campaign.creator == signer::address_of(&test_account), 1);
-        assert!(campaign.unit_price == unit_price, 2);
-        assert!(campaign.reward_pool == reward_pool, 3);
-        assert!(campaign.active == true, 4);
+        assert!(campaign.title == title, 2);
+        assert!(campaign.description == description, 3);
+        assert!(campaign.prompt == prompt, 4);
+        assert!(campaign.unit_price == unit_price, 5);
+        assert!(campaign.minimum_contribution == minimum_contribution, 6);
+        assert!(campaign.reward_pool == reward_pool, 7);
+        assert!(campaign.active == true, 8);
 
         // Clean up capabilities
         coin::destroy_burn_cap(burn_cap);
@@ -181,8 +204,9 @@ module campaign_manager::CampaignManager {
             &test_account,
             b"Campaign 1",
             b"Description 1",
-            b"Data Spec 1",
+            b"Prompt 1",
             100,
+            0,
             1000
         );
         
@@ -190,8 +214,9 @@ module campaign_manager::CampaignManager {
             &test_account,
             b"Campaign 2",
             b"Description 2",
-            b"Data Spec 2",
+            b"Prompt 2",
             200,
+            0,
             2000
         );
         
@@ -242,6 +267,7 @@ module campaign_manager::CampaignManager {
             b"Test Description",
             b"Test Data Spec",
             unit_price,
+            0,
             1000
         );
         
