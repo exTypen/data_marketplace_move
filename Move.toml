@@ -9,5 +9,5 @@ marketplace = "0x93467d5b87fd33675f502a701104742e56ba2ae5401357231d2edfb03358b31
 
 [dependencies.AptosFramework]
 git = "https://github.com/aptos-labs/aptos-framework.git"
-rev = "devnet"
+rev = "main"
 subdir = "aptos-framework"
