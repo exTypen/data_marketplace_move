@@ -218,6 +218,15 @@ class CampaignManager extends BaseManager {
 
 // Contribution Manager
 class ContributionManager extends BaseManager {
+    async addTrustedKey(publicKey: string): Promise<string> {
+        const payload = AptosUtils.createEntryPayload(
+            `${this.moduleAddress}::ContributionManager::add_trusted_key`,
+            [AptosUtils.hexToBytes(publicKey)]
+        );
+
+        return this.executeTransaction(payload);
+    }
+
     async addContribution(
         campaignId: number,
         dataCount: number,
@@ -327,16 +336,36 @@ async function handleCliCommands() {
     try {
         const sdk = new AptosMoveSDK();
         
-        // Yeni hesap oluştur ve test APT yükle
-        const account = sdk.setAccount();
-        console.log("\nYeni hesap oluşturuldu!");
+        // Özel anahtarı env'den al ve hesabı oluştur
+        const privateKey = process.env.TRUSTED_PRIVATE_KEY;
+        if (!privateKey) {
+            throw new Error("TRUSTED_PRIVATE_KEY env değişkeni bulunamadı!");
+        }
+        
+        const account = sdk.setAccount(privateKey);
+        console.log("\nHesap yüklendi!");
         console.log("Adres:", account.address().hex());
         
-        await sdk.account.fundAccount();
         const balance = await sdk.account.getBalance();
         console.log("Bakiye:", balance.formatted, "APT\n");
 
         switch (command) {
+            case "--add-trusted-key": {
+                if (args.length < 2) {
+                    console.error("Kullanım: npm start -- --add-trusted-key <publicKey>");
+                    process.exit(1);
+                }
+
+                const publicKey = args[1];
+                console.log("\nGüvenilir anahtar ekleniyor...");
+                console.log("Public Key:", publicKey);
+
+                const txn = await sdk.contribution.addTrustedKey(publicKey);
+                console.log("\nGüvenilir anahtar başarıyla eklendi!");
+                console.log("Transaction Hash:", txn);
+                break;
+            }
+
             case "--create-campaign": {
                 const { title, description, prompt, unitPrice, minContribution, rewardPool } = DEFAULT_VALUES.campaign;
                 
@@ -458,16 +487,19 @@ async function handleCliCommands() {
 
             case "--help": {
                 console.log("\nKullanılabilir komutlar:");
-                console.log("1. Kampanya oluşturma (default değerlerle):");
+                console.log("1. Güvenilir anahtar ekleme:");
+                console.log("   npm start -- --add-trusted-key <publicKey>");
+                
+                console.log("\n2. Kampanya oluşturma (default değerlerle):");
                 console.log("   npm start -- --create-campaign");
                 
-                console.log("\n2. Kampanyaları listeleme:");
+                console.log("\n3. Kampanyaları listeleme:");
                 console.log("   npm start -- --list-campaigns");
                 
-                console.log("\n3. Katkı ekleme:");
+                console.log("\n4. Katkı ekleme:");
                 console.log("   npm start -- --add-contribution <campaignId>");
                 
-                console.log("\n4. Katkıları listeleme:");
+                console.log("\n5. Katkıları listeleme:");
                 console.log("   npm start -- --list-contributions <campaignId>");
                 break;
             }

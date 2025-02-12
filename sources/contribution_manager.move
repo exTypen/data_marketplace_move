@@ -29,15 +29,76 @@ module contribution_manager::ContributionManager {
         contributions: Table<u64, vector<Contribution>>, // campaign_id -> contributions
     }
 
+    // Trusted public keys store
+    struct TrustedPublicKeys has key {
+        creator: address,
+        keys: vector<vector<u8>>,
+    }
+
     // Error codes
     const ERR_CAMPAIGN_NOT_FOUND: u64 = 1;
     const ERR_INVALID_DATA_COUNT: u64 = 2;
+    const ERR_NOT_CREATOR: u64 = 3;
+    const ERR_KEY_ALREADY_EXISTS: u64 = 4;
+    const ERR_KEY_NOT_FOUND: u64 = 5;
+    const ERR_NO_VALID_SIGNATURE: u64 = 6;
 
     fun init_module(account: &signer) {
         let store = ContributionStore {
             contributions: table::new(),
         };
         move_to(account, store);
+
+        // Initialize trusted public keys with empty vector
+        let trusted_keys = TrustedPublicKeys {
+            creator: signer::address_of(account),
+            keys: vector::empty<vector<u8>>(),
+        };
+        move_to(account, trusted_keys);
+    }
+
+    // Add a new trusted public key
+    public entry fun add_trusted_key(account: &signer, public_key: vector<u8>) acquires TrustedPublicKeys {
+        let trusted_keys = borrow_global_mut<TrustedPublicKeys>(@contribution_manager);
+        assert!(signer::address_of(account) == trusted_keys.creator, ERR_NOT_CREATOR);
+        
+        // Check if key already exists
+        let i = 0;
+        let len = vector::length(&trusted_keys.keys);
+        while (i < len) {
+            assert!(*vector::borrow(&trusted_keys.keys, i) != public_key, ERR_KEY_ALREADY_EXISTS);
+            i = i + 1;
+        };
+        
+        vector::push_back(&mut trusted_keys.keys, public_key);
+    }
+
+    // Remove a trusted public key
+    public entry fun remove_trusted_key(account: &signer, public_key: vector<u8>) acquires TrustedPublicKeys {
+        let trusted_keys = borrow_global_mut<TrustedPublicKeys>(@contribution_manager);
+        assert!(signer::address_of(account) == trusted_keys.creator, ERR_NOT_CREATOR);
+        
+        let i = 0;
+        let len = vector::length(&trusted_keys.keys);
+        let found = false;
+        
+        while (i < len) {
+            if (*vector::borrow(&trusted_keys.keys, i) == public_key) {
+                vector::remove(&mut trusted_keys.keys, i);
+                found = true;
+                break
+            };
+            i = i + 1;
+        };
+        
+        assert!(found, ERR_KEY_NOT_FOUND);
+    }
+
+    // Get all trusted public keys
+    #[view]
+    public fun get_trusted_keys(): vector<vector<u8>> acquires TrustedPublicKeys {
+        let trusted_keys = borrow_global<TrustedPublicKeys>(@contribution_manager);
+        trusted_keys.keys
     }
 
     // Verify signature for contribution data
@@ -47,25 +108,34 @@ module contribution_manager::ContributionManager {
         store_cid: vector<u8>,
         score: u64,
         signature: vector<u8>
-    ): bool {
+    ): bool acquires TrustedPublicKeys {
         let message = vector::empty<u8>();
         vector::append(&mut message, bcs::to_bytes(&campaign_id));
         vector::append(&mut message, bcs::to_bytes(&data_count));
         
-        // vector<u8> serialization - same format as TypeScript
         let store_cid_len = vector::length(&store_cid);
         vector::append(&mut message, bcs::to_bytes(&(store_cid_len as u64)));
         vector::append(&mut message, store_cid);
         
         vector::append(&mut message, bcs::to_bytes(&score));
 
-        // Hash the message using SHA2-256
         let message_hash = hash::sha2_256(message);
-        
-        let public_key = x"2096c0773fc25243b95354d6dfd1bbcddd4516e29c260760bf504d041f645724";
-        let unvalidated_public_key = ed25519::new_unvalidated_public_key_from_bytes(public_key);
         let signature = ed25519::new_signature_from_bytes(signature);
-        ed25519::signature_verify_strict(&signature, &unvalidated_public_key, message_hash)
+        
+        let trusted_keys = borrow_global<TrustedPublicKeys>(@contribution_manager);
+        let i = 0;
+        let len = vector::length(&trusted_keys.keys);
+        
+        while (i < len) {
+            let public_key = vector::borrow(&trusted_keys.keys, i);
+            let unvalidated_public_key = ed25519::new_unvalidated_public_key_from_bytes(*public_key);
+            if (ed25519::signature_verify_strict(&signature, &unvalidated_public_key, message_hash)) {
+                return true
+            };
+            i = i + 1;
+        };
+        
+        false
     }
 
     // Add a new contribution
@@ -76,11 +146,11 @@ module contribution_manager::ContributionManager {
         store_cid: vector<u8>,
         score: u64,
         signature: vector<u8>,
-    ) acquires ContributionStore {
+    ) acquires ContributionStore, TrustedPublicKeys {
         // Verify the signature
         assert!(
             verify_contribution_signature(campaign_id, data_count, store_cid, score, signature),
-            0 // Signature verification failed
+            ERR_NO_VALID_SIGNATURE
         );
 
         let contribution = Contribution {
@@ -170,7 +240,7 @@ module contribution_manager::ContributionManager {
     }
 
     #[test]
-    fun test_add_contribution() acquires ContributionStore {
+    fun test_add_contribution() acquires ContributionStore, TrustedPublicKeys {
         // Create test accounts
         let test_account = account::create_account_for_test(@0x1);
         let campaign_manager_account = account::create_account_for_test(@campaign_manager);
@@ -236,7 +306,7 @@ module contribution_manager::ContributionManager {
     }
 
     #[test]
-    fun test_verified_contribution() acquires ContributionStore {
+    fun test_verified_contribution() acquires ContributionStore, TrustedPublicKeys {
         // Create test accounts
         let test_account = account::create_account_for_test(@0x1);
         let campaign_manager = account::create_account_for_test(@campaign_manager);
@@ -309,7 +379,7 @@ module contribution_manager::ContributionManager {
     }
 
     #[test]
-    fun test_multiple_contributions() acquires ContributionStore {
+    fun test_multiple_contributions() acquires ContributionStore, TrustedPublicKeys {
         // Create test accounts
         let test_account1 = account::create_account_for_test(@0x1);
         let test_account2 = account::create_account_for_test(@0x2);
