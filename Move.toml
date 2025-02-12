@@ -4,7 +4,7 @@ version = "1.0.0"
 authors = []
 
 [addresses] 
-marketplace = "0xe6637e43a953e40d88bfaf5ad1edd92b57c0e34c834e4ad6044f3c166232371a"
+marketplace = "0xaa586426db3fbb1222f045f884054fa9b66b3b48758f0f8104b9c8b42193e209"
 
 [dependencies.AptosFramework]
 git = "https://github.com/aptos-labs/aptos-framework.git"
