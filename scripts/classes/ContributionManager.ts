@@ -6,7 +6,7 @@ import { Contribution } from "../types";
 class ContributionManager extends BaseManager {
   async addTrustedKey(publicKey: string): Promise<string> {
     const payload = AptosUtils.createEntryPayload(
-      `${this.moduleAddress}::ContributionManager::add_trusted_key`,
+      `${this.moduleAddress}::verifier::add_trusted_key`,
       [AptosUtils.hexToBytes(publicKey)]
     );
 
@@ -21,7 +21,7 @@ class ContributionManager extends BaseManager {
     signature: string
   ): Promise<string> {
     const payload = AptosUtils.createEntryPayload(
-      `${this.moduleAddress}::ContributionManager::add_contribution`,
+      `${this.moduleAddress}::contribution_manager::add_contribution`,
       [
         campaignId.toString(),
         dataCount.toString(),
@@ -37,7 +37,7 @@ class ContributionManager extends BaseManager {
   async getCampaignContributions(campaignId: number): Promise<Contribution[]> {
     try {
       const response = await this.viewFunction(
-        "ContributionManager::get_campaign_contributions",
+        "contribution_manager::get_campaign_contributions",
         [campaignId.toString()]
       );
       return (response[0] as any[]).map((contrib) =>
@@ -53,7 +53,7 @@ class ContributionManager extends BaseManager {
   ): Promise<Contribution[]> {
     try {
       const response = await this.viewFunction(
-        "ContributionManager::get_contributor_contributions",
+        "contribution_manager::get_contributor_contributions",
         [contributor]
       );
       return (response[0] as any[]).map((contrib) =>

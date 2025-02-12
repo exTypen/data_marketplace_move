@@ -1,11 +1,11 @@
-module escrow_manager::EscrowManager {
+module marketplace::escrow_manager {
     use std::signer;
     use std::table::{Self, Table};
     use aptos_framework::coin::{Self};
     use aptos_framework::aptos_coin::AptosCoin;
     use aptos_framework::account;
 
-    friend contribution_manager::ContributionManager;
+    friend marketplace::contribution_manager;
 
     /// Escrow structure
     struct EscrowStore has key {
@@ -81,7 +81,7 @@ module escrow_manager::EscrowManager {
         recipient: address,
         amount: u64
     ) acquires EscrowStore {
-        let store = borrow_global_mut<EscrowStore>(@escrow_manager);
+        let store = borrow_global_mut<EscrowStore>(@marketplace);
         
         // Check if there are locked funds for the campaign
         assert!(table::contains(&store.escrows, campaign_id), ERR_ESCROW_NOT_FOUND);
@@ -117,7 +117,7 @@ module escrow_manager::EscrowManager {
     fun test_lock_funds() acquires EscrowStore {
         // Create test accounts
         let test_account = account::create_account_for_test(@0x1);
-        let escrow_manager = account::create_account_for_test(@escrow_manager);
+        let escrow_manager = account::create_account_for_test(@marketplace);
         
         // Initialize AptosCoin
         let framework_signer = account::create_account_for_test(@0x1);
@@ -131,7 +131,7 @@ module escrow_manager::EscrowManager {
         
         // Initialize module and register resource account
         init_module(&escrow_manager);
-        let store = borrow_global<EscrowStore>(@escrow_manager);
+        let store = borrow_global<EscrowStore>(@marketplace);
         let resource_signer = account::create_signer_with_capability(&store.signer_cap);
         if (!coin::is_account_registered<AptosCoin>(signer::address_of(&resource_signer))) {
             coin::register<AptosCoin>(&resource_signer);
@@ -142,10 +142,10 @@ module escrow_manager::EscrowManager {
         let amount = 1000;
         
         // Lock funds
-        lock_funds(&test_account, campaign_id, amount, @escrow_manager);
+        lock_funds(&test_account, campaign_id, amount, @marketplace);
         
         // Check locked amount
-        let locked_amount = get_locked_amount(campaign_id, @escrow_manager);
+        let locked_amount = get_locked_amount(campaign_id, @marketplace);
         assert!(locked_amount == amount, 1);
 
         // Clean up capabilities
@@ -158,7 +158,7 @@ module escrow_manager::EscrowManager {
         // Create test accounts
         let test_account = account::create_account_for_test(@0x1);
         let recipient = account::create_account_for_test(@0x2);
-        let escrow_manager = account::create_account_for_test(@escrow_manager);
+        let escrow_manager = account::create_account_for_test(@marketplace);
         
         // Initialize AptosCoin
         let framework_signer = account::create_account_for_test(@0x1);
@@ -173,7 +173,7 @@ module escrow_manager::EscrowManager {
         
         // Initialize module and register resource account
         init_module(&escrow_manager);
-        let store = borrow_global<EscrowStore>(@escrow_manager);
+        let store = borrow_global<EscrowStore>(@marketplace);
         let resource_signer = account::create_signer_with_capability(&store.signer_cap);
         if (!coin::is_account_registered<AptosCoin>(signer::address_of(&resource_signer))) {
             coin::register<AptosCoin>(&resource_signer);
@@ -184,10 +184,10 @@ module escrow_manager::EscrowManager {
         let amount = 1000;
         
         // Lock funds
-        lock_funds(&test_account, campaign_id, amount, @escrow_manager);
+        lock_funds(&test_account, campaign_id, amount, @marketplace);
         
         // Release funds
-        release_funds(&escrow_manager, campaign_id, signer::address_of(&recipient), @escrow_manager);
+        release_funds(&escrow_manager, campaign_id, signer::address_of(&recipient), @marketplace);
         
         // Check balances
         let recipient_balance = coin::balance<aptos_coin::AptosCoin>(signer::address_of(&recipient));
@@ -203,7 +203,7 @@ module escrow_manager::EscrowManager {
         // Create test accounts
         let test_account = account::create_account_for_test(@0x1);
         let contributor = account::create_account_for_test(@0x2);
-        let escrow_manager = account::create_account_for_test(@escrow_manager);
+        let escrow_manager = account::create_account_for_test(@marketplace);
         
         // Initialize AptosCoin
         let framework_signer = account::create_account_for_test(@0x1);
@@ -218,7 +218,7 @@ module escrow_manager::EscrowManager {
         
         // Initialize module and register resource account
         init_module(&escrow_manager);
-        let store = borrow_global<EscrowStore>(@escrow_manager);
+        let store = borrow_global<EscrowStore>(@marketplace);
         let resource_signer = account::create_signer_with_capability(&store.signer_cap);
         if (!coin::is_account_registered<AptosCoin>(signer::address_of(&resource_signer))) {
             coin::register<AptosCoin>(&resource_signer);
@@ -230,14 +230,14 @@ module escrow_manager::EscrowManager {
         let release_amount = 500;
         
         // Lock funds
-        lock_funds(&test_account, campaign_id, total_amount, @escrow_manager);
+        lock_funds(&test_account, campaign_id, total_amount, @marketplace);
         
         // Release funds for data contribution
         release_funds_for_data(campaign_id, signer::address_of(&contributor), release_amount);
         
         // Check balances and remaining locked amount
         let contributor_balance = coin::balance<aptos_coin::AptosCoin>(signer::address_of(&contributor));
-        let remaining_locked = get_locked_amount(campaign_id, @escrow_manager);
+        let remaining_locked = get_locked_amount(campaign_id, @marketplace);
         assert!(contributor_balance == release_amount, 1);
         assert!(remaining_locked == total_amount - release_amount, 2);
 
@@ -250,7 +250,7 @@ module escrow_manager::EscrowManager {
     #[expected_failure(abort_code = ERR_ESCROW_NOT_FOUND, location = Self)]
     fun test_get_locked_amount_nonexistent_campaign() acquires EscrowStore {
         // Create test account
-        let escrow_manager = account::create_account_for_test(@escrow_manager);
+        let escrow_manager = account::create_account_for_test(@marketplace);
         
         // Initialize AptosCoin
         let framework_signer = account::create_account_for_test(@0x1);
@@ -261,14 +261,14 @@ module escrow_manager::EscrowManager {
         
         // Initialize module and register resource account
         init_module(&escrow_manager);
-        let store = borrow_global<EscrowStore>(@escrow_manager);
+        let store = borrow_global<EscrowStore>(@marketplace);
         let resource_signer = account::create_signer_with_capability(&store.signer_cap);
         if (!coin::is_account_registered<AptosCoin>(signer::address_of(&resource_signer))) {
             coin::register<AptosCoin>(&resource_signer);
         };
         
         // Check locked amount for nonexistent campaign
-        get_locked_amount(999, @escrow_manager);
+        get_locked_amount(999, @marketplace);
 
         // Clean up capabilities
         coin::destroy_burn_cap(burn_cap);

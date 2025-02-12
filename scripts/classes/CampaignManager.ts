@@ -13,7 +13,7 @@ class CampaignManager extends BaseManager {
     rewardPool: number
   ): Promise<string> {
     const payload = AptosUtils.createEntryPayload(
-      `${this.moduleAddress}::CampaignManager::create_campaign`,
+      `${this.moduleAddress}::campaign_manager::create_campaign`,
       [
         title,
         description,
@@ -30,7 +30,7 @@ class CampaignManager extends BaseManager {
   async getCampaign(campaignId: number): Promise<Campaign | null> {
     try {
       const response = await this.viewFunction(
-        "CampaignManager::get_campaign",
+        "campaign_manager::get_campaign",
         [campaignId.toString()]
       );
       return this.parseCampaignResponse(response[0]);
@@ -42,7 +42,7 @@ class CampaignManager extends BaseManager {
   async getAllCampaigns(): Promise<Campaign[]> {
     try {
       const response = await this.viewFunction(
-        "CampaignManager::get_all_campaigns"
+        "campaign_manager::get_all_campaigns"
       );
       return (response[0] as any[]).map((camp) =>
         this.parseCampaignResponse(camp)

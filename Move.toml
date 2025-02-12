@@ -3,13 +3,10 @@ name = "marketplace"
 version = "1.0.0"
 authors = []
 
-[addresses]
-campaign_manager = "0xb649d71a97ad75da383844c3da74456693f34ea9acb1b4b1321ffd31aa074704"
-escrow_manager = "0xb649d71a97ad75da383844c3da74456693f34ea9acb1b4b1321ffd31aa074704"
-contribution_manager = "0xb649d71a97ad75da383844c3da74456693f34ea9acb1b4b1321ffd31aa074704"
-
+[addresses] 
+marketplace = "0xe6637e43a953e40d88bfaf5ad1edd92b57c0e34c834e4ad6044f3c166232371a"
 
 [dependencies.AptosFramework]
 git = "https://github.com/aptos-labs/aptos-framework.git"
-rev = "devnet"
+rev = "main"
 subdir = "aptos-framework"

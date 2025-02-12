@@ -1,11 +1,13 @@
-module campaign_manager::CampaignManager {
+module marketplace::campaign_manager {
     use std::signer;
     use std::table;
     use std::vector;
-    use std::string::{Self, String};
+    use std::string::{String};
 
-    use escrow_manager::EscrowManager;
-    friend contribution_manager::ContributionManager;
+    #[test_only]
+    use std::string::{Self};
+
+    friend marketplace::contribution_manager;
 
     // Campaign structure.
     struct Campaign has store, drop, copy {
@@ -49,13 +51,13 @@ module campaign_manager::CampaignManager {
         reward_pool: u64
     ) acquires CampaignStore {
         // Get store from module address
-        let module_addr = @campaign_manager;
+        let module_addr = @marketplace;
         let store_ref = borrow_global_mut<CampaignStore>(module_addr);
         let id = store_ref.next_id;
         store_ref.next_id = id + 1;
 
         // First, lock the funds in the escrow
-        EscrowManager::lock_funds(account, id, reward_pool, module_addr);
+        marketplace::escrow_manager::lock_funds(account, id, reward_pool, module_addr);
 
         let new_campaign = Campaign {
             id,
@@ -75,25 +77,25 @@ module campaign_manager::CampaignManager {
     // Returns the campaign with the specified ID.
     #[view]
     public fun get_campaign(campaign_id: u64): Campaign acquires CampaignStore {
-        let store_ref = borrow_global<CampaignStore>(@campaign_manager);
+        let store_ref = borrow_global<CampaignStore>(@marketplace);
         let campaign = *table::borrow(&store_ref.campaigns, campaign_id);
         
         // Get the remaining amount in the escrow
-        campaign.remaining_reward = EscrowManager::get_locked_amount(campaign_id, @campaign_manager);
+        campaign.remaining_reward = marketplace::escrow_manager::get_locked_amount(campaign_id, @marketplace);
         campaign
     }
 
     // Returns all campaigns in the store.
     #[view]
     public fun get_all_campaigns(): vector<Campaign> acquires CampaignStore {
-        let store = borrow_global<CampaignStore>(@campaign_manager);
+        let store = borrow_global<CampaignStore>(@marketplace);
         let campaigns = vector::empty<Campaign>();
         let i = 1;
         while (i < store.next_id) {
             if (table::contains(&store.campaigns, i)) {
                 let camp = *table::borrow(&store.campaigns, i);
                 // For each campaign, get the remaining amount in the escrow
-                camp.remaining_reward = EscrowManager::get_locked_amount(i, @campaign_manager);
+                camp.remaining_reward = marketplace::escrow_manager::get_locked_amount(i, @marketplace);
                 vector::push_back(&mut campaigns, camp);
             };
             i = i + 1;
@@ -110,7 +112,7 @@ module campaign_manager::CampaignManager {
 
     #[view]
     public(friend) fun get_all_campaign_ids(): vector<u64> acquires CampaignStore {
-        let store = borrow_global<CampaignStore>(@campaign_manager);
+        let store = borrow_global<CampaignStore>(@marketplace);
         let campaign_ids = vector::empty<u64>();
         let i = 1;
         while (i < store.next_id) {
@@ -138,8 +140,8 @@ module campaign_manager::CampaignManager {
     fun test_create_campaign() acquires CampaignStore {
         // Create test accounts
         let test_account = account::create_account_for_test(@0x1);
-        let campaign_manager = account::create_account_for_test(@campaign_manager);
-        let escrow_manager = account::create_account_for_test(@escrow_manager);
+        let campaign_manager = account::create_account_for_test(@marketplace);
+        let escrow_manager = account::create_account_for_test(@marketplace);
         
         // Initialize AptosCoin
         let framework_signer = account::create_account_for_test(@0x1);
@@ -152,7 +154,7 @@ module campaign_manager::CampaignManager {
         
         // Initialize modules
         init_module(&campaign_manager);
-        EscrowManager::initialize_for_test(&escrow_manager);
+        marketplace::escrow_manager::initialize_for_test(&escrow_manager);
         
         // Prepare test data
         let title = string::utf8(b"Test Campaign");
@@ -185,8 +187,8 @@ module campaign_manager::CampaignManager {
     fun test_get_all_campaigns() acquires CampaignStore {
         // Create test accounts
         let test_account = account::create_account_for_test(@0x1);
-        let campaign_manager = account::create_account_for_test(@campaign_manager);
-        let escrow_manager = account::create_account_for_test(@escrow_manager);
+        let campaign_manager = account::create_account_for_test(@marketplace);
+        let escrow_manager = account::create_account_for_test(@marketplace);
         
         // Initialize AptosCoin
         let framework_signer = account::create_account_for_test(@0x1);
@@ -199,7 +201,7 @@ module campaign_manager::CampaignManager {
         
         // Initialize modules
         init_module(&campaign_manager);
-        EscrowManager::initialize_for_test(&escrow_manager);
+        marketplace::escrow_manager::initialize_for_test(&escrow_manager);
         
         // Create two campaigns
         create_campaign(
@@ -243,8 +245,8 @@ module campaign_manager::CampaignManager {
     fun test_get_unit_price() acquires CampaignStore {
         // Create test accounts
         let test_account = account::create_account_for_test(@0x1);
-        let campaign_manager = account::create_account_for_test(@campaign_manager);
-        let escrow_manager = account::create_account_for_test(@escrow_manager);
+        let campaign_manager = account::create_account_for_test(@marketplace);
+        let escrow_manager = account::create_account_for_test(@marketplace);
         
         // Initialize AptosCoin
         let framework_signer = account::create_account_for_test(@0x1);
@@ -257,7 +259,7 @@ module campaign_manager::CampaignManager {
         
         // Initialize modules
         init_module(&campaign_manager);
-        EscrowManager::initialize_for_test(&escrow_manager);
+        marketplace::escrow_manager::initialize_for_test(&escrow_manager);
         
         // Prepare test data
         let unit_price = 150;
@@ -286,7 +288,7 @@ module campaign_manager::CampaignManager {
     #[expected_failure]
     fun test_nonexistent_campaign() acquires CampaignStore {
         // Create test account
-        let campaign_manager = account::create_account_for_test(@campaign_manager);
+        let campaign_manager = account::create_account_for_test(@marketplace);
         
         // Initialize module
         init_module(&campaign_manager);
