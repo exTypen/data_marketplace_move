@@ -287,4 +287,3 @@ module marketplace::contribution_manager {
         coin::destroy_mint_cap(mint_cap);
     }
 }
-

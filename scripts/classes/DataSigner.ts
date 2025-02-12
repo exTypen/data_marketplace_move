@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-export class DataSigner {
+export default class DataSigner {
   private trustedAccount: AptosAccount;
 
   constructor(privateKey: string = process.env.TRUSTED_PRIVATE_KEY!) {
@@ -12,7 +12,9 @@ export class DataSigner {
   }
 
   getTrustedPublicKey(): string {
-        return Buffer.from(this.trustedAccount.pubKey().toUint8Array()).toString('hex');
+    return Buffer.from(this.trustedAccount.pubKey().toUint8Array()).toString(
+      "hex"
+    );
   }
 
   signContributionData(
@@ -42,9 +44,11 @@ export class DataSigner {
 
     // Mesajı hash'le (SHA2-256) ve imzala
     const messageHash = sha256(message);
-        const signature = this.trustedAccount.signBuffer(messageHash).toUint8Array();
+    const signature = this.trustedAccount
+      .signBuffer(messageHash)
+      .toUint8Array();
 
-        return Buffer.from(signature).toString('hex');
+    return Buffer.from(signature).toString("hex");
   }
 }
 
