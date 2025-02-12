@@ -273,7 +273,7 @@ class ContributionManager extends BaseManager {
         dataCount.toString(),
         storeCid,
         score.toString(),
-        signature,
+        AptosUtils.hexToBytes(signature),
       ]
     );
 

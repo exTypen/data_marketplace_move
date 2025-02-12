@@ -34,7 +34,7 @@ module contribution_manager::ContributionManager {
     // Trusted public keys store
     struct TrustedPublicKeys has key {
         creator: address,
-        keys: vector<String>,
+        keys: vector<vector<u8>>,
     }
 
     // Error codes
@@ -54,13 +54,13 @@ module contribution_manager::ContributionManager {
         // Initialize trusted public keys with empty vector
         let trusted_keys = TrustedPublicKeys {
             creator: signer::address_of(account),
-            keys: vector::empty<String>(),
+            keys: vector::empty<vector<u8>>(),
         };
         move_to(account, trusted_keys);
     }
 
     // Add a new trusted public key
-    public entry fun add_trusted_key(account: &signer, public_key: String) acquires TrustedPublicKeys {
+    public entry fun add_trusted_key(account: &signer, public_key: vector<u8>) acquires TrustedPublicKeys {
         let trusted_keys = borrow_global_mut<TrustedPublicKeys>(@contribution_manager);
         assert!(signer::address_of(account) == trusted_keys.creator, ERR_NOT_CREATOR);
         
@@ -76,7 +76,7 @@ module contribution_manager::ContributionManager {
     }
 
     // Remove a trusted public key
-    public entry fun remove_trusted_key(account: &signer, public_key: String) acquires TrustedPublicKeys {
+    public entry fun remove_trusted_key(account: &signer, public_key: vector<u8>) acquires TrustedPublicKeys {
         let trusted_keys = borrow_global_mut<TrustedPublicKeys>(@contribution_manager);
         assert!(signer::address_of(account) == trusted_keys.creator, ERR_NOT_CREATOR);
         
@@ -98,7 +98,7 @@ module contribution_manager::ContributionManager {
 
     // Get all trusted public keys
     #[view]
-    public fun get_trusted_keys(): vector<String> acquires TrustedPublicKeys {
+    public fun get_trusted_keys(): vector<vector<u8>> acquires TrustedPublicKeys {
         let trusted_keys = borrow_global<TrustedPublicKeys>(@contribution_manager);
         trusted_keys.keys
     }
@@ -130,8 +130,7 @@ module contribution_manager::ContributionManager {
         
         while (i < len) {
             let public_key = vector::borrow(&trusted_keys.keys, i);
-            let public_key_bytes = string::bytes(public_key);
-            let unvalidated_public_key = ed25519::new_unvalidated_public_key_from_bytes(*public_key_bytes);
+            let unvalidated_public_key = ed25519::new_unvalidated_public_key_from_bytes(*public_key);
             if (ed25519::signature_verify_strict(&signature, &unvalidated_public_key, message_hash)) {
                 return true
             };
