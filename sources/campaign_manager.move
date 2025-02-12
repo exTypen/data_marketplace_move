@@ -2,6 +2,8 @@ module campaign_manager::CampaignManager {
     use std::signer;
     use std::table;
     use std::vector;
+    use std::string::{Self, String};
+
     use escrow_manager::EscrowManager;
     friend contribution_manager::ContributionManager;
 
@@ -9,9 +11,9 @@ module campaign_manager::CampaignManager {
     struct Campaign has store, drop, copy {
         id: u64,
         creator: address,
-        title: vector<u8>,
-        description: vector<u8>,
-        prompt: vector<u8>,
+        title: String,
+        description: String,
+        prompt: String,
         reward_pool: u64,
         remaining_reward: u64,
         unit_price: u64,
@@ -39,9 +41,9 @@ module campaign_manager::CampaignManager {
     // Creates a new campaign and adds it to the store.
     public entry fun create_campaign(
         account: &signer,
-        title: vector<u8>,
-        description: vector<u8>,
-        prompt: vector<u8>,
+        title: String,
+        description: String,
+        prompt: String,
         unit_price: u64,
         minimum_contribution: u64,
         reward_pool: u64
@@ -153,9 +155,9 @@ module campaign_manager::CampaignManager {
         EscrowManager::initialize_for_test(&escrow_manager);
         
         // Prepare test data
-        let title = b"Test Campaign";
-        let description = b"Test Description";
-        let prompt = b"Test Prompt";
+        let title = string::utf8(b"Test Campaign");
+        let description = string::utf8(b"Test Description");
+        let prompt = string::utf8(b"Test Prompt");
         let unit_price = 100;
         let minimum_contribution = 0;
         let reward_pool = 1000;
@@ -202,9 +204,9 @@ module campaign_manager::CampaignManager {
         // Create two campaigns
         create_campaign(
             &test_account,
-            b"Campaign 1",
-            b"Description 1",
-            b"Prompt 1",
+            string::utf8(b"Campaign 1"),
+            string::utf8(b"Description 1"),
+            string::utf8(b"Prompt 1"),
             100,
             0,
             1000
@@ -212,9 +214,9 @@ module campaign_manager::CampaignManager {
         
         create_campaign(
             &test_account,
-            b"Campaign 2",
-            b"Description 2",
-            b"Prompt 2",
+            string::utf8(b"Campaign 2"),
+            string::utf8(b"Description 2"),
+            string::utf8(b"Prompt 2"),
             200,
             0,
             2000
@@ -263,9 +265,9 @@ module campaign_manager::CampaignManager {
         // Create campaign
         create_campaign(
             &test_account,
-            b"Test Campaign",
-            b"Test Description",
-            b"Test Data Spec",
+            string::utf8(b"Test Campaign"),
+            string::utf8(b"Test Description"),
+            string::utf8(b"Test Data Spec"),
             unit_price,
             0,
             1000
